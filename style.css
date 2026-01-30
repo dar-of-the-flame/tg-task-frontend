@@ -656,3 +656,506 @@ form {
         height: 56px;
     }
 }
+/* Добавляем новые стили к существующим */
+
+/* Категории в основном интерфейсе */
+.categories {
+    margin-top: 2rem;
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: 12px;
+}
+
+.categories h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    color: var(--text);
+}
+
+.categories-list {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.category-btn {
+    padding: 0.6rem 1rem;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.category-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.category-btn:hover:not(.active) {
+    background: var(--surface);
+    color: var(--text);
+}
+
+/* Выбор категории в модальном окне */
+.category-selector {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.category-option {
+    padding: 1rem;
+    background: var(--surface-light);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.category-option i {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+}
+
+.category-option.selected {
+    background: rgba(99, 102, 241, 0.2);
+    border-color: var(--primary);
+}
+
+.category-option.selected i {
+    color: var(--primary);
+}
+
+.category-option:hover:not(.selected) {
+    background: var(--surface);
+    border-color: var(--text-secondary);
+}
+
+/* Новые поля ввода времени с циферками */
+.time-inputs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 0.5rem;
+}
+
+.time-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.time-input-group label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.time-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.time-input-wrapper input[type="number"] {
+    width: 60px;
+    padding: 0.8rem;
+    text-align: center;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.time-input-wrapper input[type="number"]:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.time-input-wrapper span {
+    font-size: 1.2rem;
+    color: var(--text);
+    font-weight: bold;
+}
+
+.time-format {
+    display: flex;
+    gap: 0.3rem;
+}
+
+.time-format-btn {
+    flex: 1;
+    padding: 0.3rem 0.5rem;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.time-format-btn.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+/* Поля даты */
+.form-group input[type="date"] {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1rem;
+}
+
+/* Textarea */
+.form-group textarea {
+    width: 100%;
+    padding: 0.8rem 1rem;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+}
+
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+/* Приоритет */
+.priority-selector {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.priority-option {
+    flex: 1;
+    padding: 0.8rem;
+    background: var(--surface-light);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.3rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.priority-option i {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+}
+
+.priority-option.active {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.priority-option[data-priority="high"].active {
+    border-color: var(--danger);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.priority-option[data-priority="high"].active i {
+    color: var(--danger);
+}
+
+.priority-option[data-priority="low"].active {
+    border-color: var(--success);
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.priority-option[data-priority="low"].active i {
+    color: var(--success);
+}
+
+/* Quick Actions */
+.quick-actions {
+    position: fixed;
+    bottom: 5.5rem;
+    right: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    z-index: 99;
+}
+
+.quick-action-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.8rem 1rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    min-width: 180px;
+}
+
+.quick-action-btn:hover {
+    transform: translateX(-5px);
+    background: var(--surface-light);
+}
+
+.quick-action-btn i {
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+
+/* Статистика */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.stat-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+.stat-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+
+.stat-info h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+}
+
+.stat-info p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* Календарь */
+.calendar-container {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1.5rem;
+}
+
+.month-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 0.5rem;
+}
+
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background: var(--surface-light);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.calendar-day:hover {
+    background: var(--border);
+}
+
+.calendar-day.today {
+    background: var(--primary);
+    color: white;
+}
+
+.calendar-day.has-tasks {
+    border: 2px solid var(--primary);
+}
+
+/* Кнопки управления */
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-icon:hover {
+    background: var(--surface);
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    background: var(--surface-light);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-small:hover {
+    background: var(--surface);
+    color: var(--text);
+}
+
+/* Заголовок задач */
+.tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.tasks-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Улучшенная карточка задачи */
+.task-item {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 0.8rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--primary);
+    position: relative;
+}
+
+.task-item.priority-high {
+    border-left-color: var(--danger);
+}
+
+.task-item.priority-low {
+    border-left-color: var(--success);
+}
+
+.task-item.completed {
+    opacity: 0.7;
+    border-left-color: var(--text-secondary);
+}
+
+.task-item.completed .task-text {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+
+.task-category {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.8rem;
+    padding: 0.2rem 0.5rem;
+    background: var(--surface-light);
+    border-radius: 4px;
+    color: var(--text-secondary);
+}
+
+.task-priority {
+    position: absolute;
+    bottom: 0.5rem;
+    right: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Скрытие нативных стрелок в input[type="number"] */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 480px) {
+    .time-inputs-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .quick-action-btn {
+        min-width: 150px;
+    }
+    
+    .time-input-wrapper input[type="number"] {
+        width: 50px;
+        padding: 0.6rem;
+    }
+}
