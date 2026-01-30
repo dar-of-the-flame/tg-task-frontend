@@ -3,25 +3,201 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskFlow - Планировщик</title>
+    <title>TaskFlow 🚀</title>
+    <meta name="description" content="Умный планировщик задач для Telegram">
     <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📋 TaskFlow</h1>
-            <p class="subtitle">Твой умный планировщик в Telegram</p>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">
+                    <i class="fas fa-rocket"></i>
+                    <h1>TaskFlow</h1>
+                </div>
+                <p class="subtitle">Твой умный помощник</p>
+            </div>
+            <div class="header-right">
+                <div class="user-info">
+                    <div class="avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </div>
         </header>
 
-        <main id="app">
-            <!-- Сюда будет подгружаться интерфейс через JS -->
-            <div class="loading">Загрузка...</div>
+        <!-- Tabs Navigation -->
+        <nav class="tabs">
+            <button class="tab-btn active" data-tab="tasks">
+                <i class="fas fa-tasks"></i>
+                <span>Задачи</span>
+            </button>
+            <button class="tab-btn" data-tab="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Календарь</span>
+            </button>
+            <button class="tab-btn" data-tab="stats">
+                <i class="fas fa-chart-line"></i>
+                <span>Статистика</span>
+            </button>
+            <button class="tab-btn" data-tab="settings">
+                <i class="fas fa-cog"></i>
+                <span>Настройки</span>
+            </button>
+        </nav>
+
+        <!-- Time Filters -->
+        <div class="time-filters">
+            <button class="filter-btn active" data-filter="today">Сегодня</button>
+            <button class="filter-btn" data-filter="tomorrow">Завтра</button>
+            <button class="filter-btn" data-filter="week">Неделя</button>
+            <button class="filter-btn" data-filter="all">Все</button>
+            <button class="filter-btn" data-filter="no-time">Без времени</button>
+        </div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Tasks Tab Content -->
+            <div class="tab-content active" id="tasks-tab">
+                <div class="tasks-container">
+                    <div class="date-header">
+                        <h2><i class="far fa-calendar"></i> Сегодня, 7 мая</h2>
+                        <span class="task-count">3 задачи</span>
+                    </div>
+                    
+                    <div class="tasks-list" id="tasks-list">
+                        <!-- Tasks will be loaded here dynamically -->
+                        <div class="empty-state">
+                            <i class="fas fa-clipboard-list"></i>
+                            <h3>Нет задач на сегодня</h3>
+                            <p>Добавьте первую задачу, нажав на кнопку ниже</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Calendar Tab Content -->
+            <div class="tab-content" id="calendar-tab">
+                <div class="calendar-container">
+                    <h2><i class="far fa-calendar-alt"></i> Календарь</h2>
+                    <p>В разработке...</p>
+                </div>
+            </div>
+
+            <!-- Stats Tab Content -->
+            <div class="tab-content" id="stats-tab">
+                <div class="stats-container">
+                    <h2><i class="fas fa-chart-pie"></i> Статистика</h2>
+                    <p>В разработке...</p>
+                </div>
+            </div>
+
+            <!-- Settings Tab Content -->
+            <div class="tab-content" id="settings-tab">
+                <div class="settings-container">
+                    <h2><i class="fas fa-sliders-h"></i> Настройки</h2>
+                    <div class="settings-item">
+                        <label>
+                            <input type="checkbox" checked>
+                            <span>Уведомления в Telegram</span>
+                        </label>
+                    </div>
+                    <div class="settings-item">
+                        <label>
+                            <input type="checkbox" checked>
+                            <span>Звуковые уведомления</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
         </main>
 
-        <footer>
-            <p>Данные хранятся в вашем Telegram-аккаунте</p>
-        </footer>
+        <!-- Add Task Button -->
+        <button class="add-task-btn" id="add-task-btn">
+            <i class="fas fa-plus"></i>
+        </button>
+    </div>
+
+    <!-- Task Modal -->
+    <div class="modal" id="task-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-plus-circle"></i> Новая задача</h3>
+                <button class="close-modal">&times;</button>
+            </div>
+            
+            <form id="task-form">
+                <!-- Emoji Selection -->
+                <div class="form-group">
+                    <label>Эмодзи задачи:</label>
+                    <div class="emoji-selector">
+                        <div class="emoji-option selected" data-emoji="🏃‍♀️">🏃‍♀️</div>
+                        <div class="emoji-option" data-emoji="📚">📚</div>
+                        <div class="emoji-option" data-emoji="💼">💼</div>
+                        <div class="emoji-option" data-emoji="🛒">🛒</div>
+                        <div class="emoji-option" data-emoji="🎯">🎯</div>
+                        <div class="emoji-option" data-emoji="☕">☕</div>
+                        <div class="emoji-option" data-emoji="🏋️">🏋️</div>
+                        <div class="emoji-option" data-emoji="🎨">🎨</div>
+                    </div>
+                    <input type="hidden" id="selected-emoji" value="🏃‍♀️">
+                </div>
+
+                <!-- Task Text -->
+                <div class="form-group">
+                    <label for="task-text">Текст задачи:</label>
+                    <input type="text" 
+                           id="task-text" 
+                           placeholder="Например: Тренировка в спортзале" 
+                           required>
+                </div>
+
+                <!-- Time Inputs -->
+                <div class="form-group">
+                    <label>Время выполнения:</label>
+                    <div class="time-inputs">
+                        <div class="time-input">
+                            <label for="start-time">Начало</label>
+                            <input type="time" id="start-time" value="19:30">
+                        </div>
+                        <div class="time-input">
+                            <label for="end-time">Конец</label>
+                            <input type="time" id="end-time" value="20:00">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reminder -->
+                <div class="form-group">
+                    <label for="reminder">Напомнить за:</label>
+                    <select id="reminder">
+                        <option value="5">5 минут</option>
+                        <option value="15" selected>15 минут</option>
+                        <option value="30">30 минут</option>
+                        <option value="60">1 час</option>
+                        <option value="0">Не напоминать</option>
+                    </select>
+                </div>
+
+                <!-- Buttons -->
+                <div class="form-buttons">
+                    <button type="button" class="btn btn-secondary close-modal">Отмена</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Сохранить задачу
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Success Toast -->
+    <div class="toast" id="success-toast">
+        <i class="fas fa-check-circle"></i>
+        <span>Задача успешно сохранена!</span>
     </div>
 
     <script src="app.js"></script>
