@@ -1,29 +1,24 @@
-// Модуль работы с задачами
 class TaskManager {
     constructor() {
         this.tasks = taskFlow.allTasks;
         this.archived = taskFlow.archivedTasks;
     }
     
-    // Фильтрация задач
     filterTasks() {
         let filteredTasks = [...this.tasks];
         
-        // Фильтр по категориям
         if (taskFlow.activeFilters.categories.length > 0) {
             filteredTasks = filteredTasks.filter(task => 
                 taskFlow.activeFilters.categories.includes(task.category)
             );
         }
         
-        // Фильтр по приоритетам
         if (taskFlow.activeFilters.priorities.length > 0) {
             filteredTasks = filteredTasks.filter(task => 
                 taskFlow.activeFilters.priorities.includes(task.priority)
             );
         }
         
-        // Фильтр по статусу
         if (taskFlow.activeFilters.status.includes('active')) {
             filteredTasks = filteredTasks.filter(task => !task.completed);
         }
@@ -37,7 +32,6 @@ class TaskManager {
             );
         }
         
-        // Быстрые фильтры
         const today = new Date().toISOString().split('T')[0];
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -70,7 +64,7 @@ class TaskManager {
         return filteredTasks;
     }
     
-     renderTasks(tasks) {
+    renderTasks(tasks) {
         const container = document.getElementById('tasks-list');
         const emptyState = document.getElementById('empty-tasks');
         
@@ -79,7 +73,6 @@ class TaskManager {
             return;
         }
         
-        // Всегда скрываем пустое состояние сначала
         if (emptyState) {
             emptyState.style.display = 'none';
         }
@@ -92,21 +85,17 @@ class TaskManager {
             return;
         }
         
-        // Сортируем задачи по дате и приоритету
         const sortedTasks = [...tasks].sort((a, b) => {
-            // Сначала невыполненные
             if (a.completed !== b.completed) {
                 return a.completed ? 1 : -1;
             }
             
-            // По дате
             const dateA = new Date(a.date || '9999-12-31');
             const dateB = new Date(b.date || '9999-12-31');
             if (dateA.getTime() !== dateB.getTime()) {
                 return dateA - dateB;
             }
             
-            // По приоритету
             const priorityOrder = { high: 3, medium: 2, low: 1 };
             return (priorityOrder[b.priority] || 1) - (priorityOrder[a.priority] || 1);
         });
@@ -158,7 +147,6 @@ class TaskManager {
             task.completed_at = null;
         }
         
-        // Сохраняем на сервер
         if (telegram.isBackendAvailable) {
             await telegram.sendTaskToBackend(task);
         }
@@ -166,22 +154,18 @@ class TaskManager {
         taskFlow.processTasks();
         this.updateTaskList();
         
-        // Показываем уведомление
         const message = task.completed ? 'Задача выполнена!' : 'Задача возвращена в работу';
         if (typeof showToast === 'function') {
             showToast(message, 'success');
         }
     }
     
-    // Создание новой задачи
     async createTask(taskData) {
         try {
-            // Валидация
             if (!taskData.text || !taskData.text.trim()) {
                 throw new Error('Введите текст задачи');
             }
             
-            // Формируем объект задачи
             const task = {
                 id: Date.now(),
                 user_id: taskFlow.userId,
@@ -196,23 +180,16 @@ class TaskManager {
                 created_at: new Date().toISOString()
             };
             
-            // Пытаемся сохранить на сервер
-            const backendSaved = await this.saveToBackend(task);
+            const backendSaved = await telegram.sendTaskToBackend(task);
             
             if (backendSaved) {
                 console.log('Задача сохранена на сервере');
-            } else {
-                console.log('Задача сохранена локально');
             }
             
-            // Добавляем в локальный список
             taskFlow.allTasks.unshift(task);
             taskFlow.processTasks();
-            
-            // Сохраняем в хранилище
             taskFlow.saveToStorage();
             
-            // Отправляем в Telegram
             if (telegram.user) {
                 telegram.sendToBot({
                     action: 'task_created',
@@ -229,33 +206,6 @@ class TaskManager {
         }
     }
     
-    // Сохранение задачи на бэкенд
-    async saveToBackend(task) {
-        try {
-            const isConnected = await taskFlow.checkBackendConnection();
-            if (!isConnected) return false;
-            
-            const response = await fetch(`${taskFlow.CONFIG.BACKEND_URL}/api/new_task`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(task),
-                timeout: 10000
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            return true;
-        } catch (error) {
-            console.warn('Не удалось сохранить на сервер:', error.message);
-            return false;
-        }
-    }
-    
-    // Отметить задачу выполненной
     completeTask(taskId) {
         const task = taskFlow.allTasks.find(t => t.id == taskId);
         if (task) {
@@ -263,15 +213,12 @@ class TaskManager {
             task.completed_at = new Date().toISOString();
             taskFlow.processTasks();
             
-            // Обновляем UI
             this.updateTaskList();
             
-            // Уведомление
             if (typeof showToast === 'function') {
                 showToast('Задача выполнена!', 'success');
             }
             
-            // Отправляем в Telegram
             if (telegram.user) {
                 telegram.sendToBot({
                     action: 'task_completed',
@@ -285,7 +232,6 @@ class TaskManager {
         return false;
     }
     
-    // Удаление задачи
     deleteTask(taskId) {
         if (!confirm('Удалить эту задачу?')) return false;
         
@@ -296,10 +242,8 @@ class TaskManager {
             task.deleted_at = new Date().toISOString();
             taskFlow.processTasks();
             
-            // Обновляем UI
             this.updateTaskList();
             
-            // Уведомление
             if (typeof showToast === 'function') {
                 showToast('Задача удалена', 'warning');
             }
@@ -309,16 +253,13 @@ class TaskManager {
         return false;
     }
     
-    // Обновление списка задач в UI
     updateTaskList() {
         const filteredTasks = this.filterTasks();
         this.renderTasks(filteredTasks);
         
-        // Обновляем счетчики
         this.updateCounters();
     }
     
-    // Обновление счетчиков задач
     updateCounters() {
         const activeCount = taskFlow.allTasks.length;
         const completedCount = taskFlow.archivedTasks.filter(t => t.completed).length;
@@ -330,7 +271,6 @@ class TaskManager {
         if (completedElement) completedElement.textContent = completedCount;
     }
     
-    // Применение фильтров
     applyFilters(categories, priorities, statuses) {
         taskFlow.activeFilters.categories = categories;
         taskFlow.activeFilters.priorities = priorities;
@@ -339,7 +279,6 @@ class TaskManager {
         taskFlow.saveToStorage();
         this.updateTaskList();
         
-        // Закрываем панель фильтров
         const filtersPanel = document.getElementById('filters-panel');
         if (filtersPanel) {
             filtersPanel.classList.remove('open');
@@ -348,7 +287,6 @@ class TaskManager {
         return true;
     }
     
-    // Сброс фильтров
     resetFilters() {
         taskFlow.activeFilters = {
             categories: ['work', 'personal', 'health', 'study'],
@@ -363,6 +301,5 @@ class TaskManager {
     }
 }
 
-// Создаем и экспортируем экземпляр
 const taskManager = new TaskManager();
 window.taskManager = taskManager;
