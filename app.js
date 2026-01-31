@@ -7,34 +7,26 @@ class TaskFlowApp {
         try {
             console.log('🚀 Инициализация TaskFlow...');
             
-            // 1. Инициализация Telegram
             await telegram.init();
             
-            // 2. Проверка бэкенда
             const isBackendAvailable = await telegram.checkBackend();
             
             if (!isBackendAvailable) {
                 throw new Error('Не удалось подключиться к серверу');
             }
             
-            // 3. Загрузка данных с сервера
             await this.loadDataFromServer();
             
-            // 4. Инициализация UI
             ui.initTheme();
             ui.updateCurrentDate();
             formManager.init();
             
-            // 5. Инициализация модулей
             calendarManager.init();
             
-            // 6. Настройка обработчиков
             this.setupEventListeners();
             
-            // 7. Первоначальный рендеринг
             this.updateUI();
             
-            // 8. Скрываем загрузочный экран
             setTimeout(() => {
                 const loadingScreen = document.getElementById('loading-screen');
                 if (loadingScreen) {
@@ -53,7 +45,6 @@ class TaskFlowApp {
         } catch (error) {
             console.error('❌ Ошибка инициализации:', error);
             
-            // Показываем сообщение об ошибке
             const loadingScreen = document.getElementById('loading-screen');
             if (loadingScreen) {
                 loadingScreen.innerHTML = `
@@ -80,16 +71,14 @@ class TaskFlowApp {
     
     async loadDataFromServer() {
         try {
-            ui.showLoading(true);
+            document.getElementById('global-loading').style.display = 'flex';
             
-            // Синхронизируем с сервером
             const synced = await taskFlow.syncWithServer();
             
             if (!synced) {
                 throw new Error('Не удалось загрузить данные с сервера');
             }
             
-            // Обрабатываем задачи
             taskFlow.processTasks();
             
             console.log('📁 Загружено задач с сервера:', taskFlow.allTasks.length);
@@ -99,12 +88,11 @@ class TaskFlowApp {
             console.error('Ошибка загрузки данных:', error);
             throw error;
         } finally {
-            ui.showLoading(false);
+            document.getElementById('global-loading').style.display = 'none';
         }
     }
     
     setupEventListeners() {
-        // Навигация
         document.querySelectorAll('.nav-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const page = e.currentTarget.dataset.page;
@@ -112,7 +100,6 @@ class TaskFlowApp {
             });
         });
         
-        // Быстрые фильтры
         document.querySelectorAll('.filter-chip').forEach(chip => {
             chip.addEventListener('click', (e) => {
                 document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
@@ -122,7 +109,6 @@ class TaskFlowApp {
             });
         });
         
-        // Фильтры (применение)
         document.getElementById('apply-filters')?.addEventListener('click', () => {
             const categories = Array.from(document.querySelectorAll('input[name="category"]:checked'))
                 .map(cb => cb.value);
@@ -137,7 +123,6 @@ class TaskFlowApp {
             }
         });
         
-        // Фильтры (сброс)
         document.getElementById('reset-filters')?.addEventListener('click', () => {
             taskManager.resetFilters();
             if (typeof showToast === 'function') {
@@ -145,7 +130,6 @@ class TaskFlowApp {
             }
         });
         
-        // Форма задачи
         document.getElementById('task-form')?.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -179,7 +163,6 @@ class TaskFlowApp {
             }
         });
         
-        // Календарь
         document.getElementById('prev-month')?.addEventListener('click', () => {
             calendarManager.prevMonth();
         });
@@ -192,12 +175,10 @@ class TaskFlowApp {
             calendarManager.goToToday();
         });
         
-        // Архив
         document.getElementById('clear-archive')?.addEventListener('click', () => {
             archiveManager.clearArchive();
         });
         
-        // Статистика
         document.getElementById('refresh-stats')?.addEventListener('click', () => {
             statsManager.updateStats();
             if (typeof showToast === 'function') {
@@ -205,12 +186,10 @@ class TaskFlowApp {
             }
         });
         
-        // Тема
         document.getElementById('theme-toggle')?.addEventListener('click', () => {
             ui.toggleTheme();
         });
         
-        // FAB меню
         const fabMain = document.getElementById('fab-main');
         const fabMenu = document.getElementById('fab-menu');
         
@@ -221,7 +200,6 @@ class TaskFlowApp {
             });
         }
         
-        // Быстрые действия из FAB меню
         document.querySelectorAll('.fab-menu-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const action = e.currentTarget.dataset.action;
@@ -232,7 +210,6 @@ class TaskFlowApp {
             });
         });
         
-        // Поиск в архиве
         const archiveSearch = document.getElementById('archive-search');
         if (archiveSearch) {
             archiveSearch.addEventListener('input', (e) => {
@@ -300,7 +277,6 @@ class TaskFlowApp {
     }
 }
 
-// Глобальные функции
 window.openTaskForm = (options = {}) => {
     if (window.taskFlowApp) {
         window.taskFlowApp.openTaskForm(options);
@@ -319,7 +295,6 @@ window.openTaskFormForDate = (dateStr) => {
     }
 };
 
-// Инициализация при загрузке
 document.addEventListener('DOMContentLoaded', () => {
     window.taskFlowApp = new TaskFlowApp();
     window.taskFlowApp.init();
