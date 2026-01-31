@@ -1824,3 +1824,163 @@ select {
 .empty-state p {
     margin-bottom: 16px;
 }
+
+/* Стили для напоминаний */
+.task-item.reminder {
+    border-left-color: #f59e0b;
+    background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, transparent 100%);
+}
+
+.task-item.reminder .task-title .reminder-badge {
+    color: #f59e0b;
+    font-size: 12px;
+    margin-left: 5px;
+}
+
+/* Стили для просроченных задач */
+.task-item.overdue {
+    border-left-color: #ef4444;
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
+    animation: pulse-overdue 2s infinite;
+}
+
+@keyframes pulse-overdue {
+    0% { opacity: 1; }
+    50% { opacity: 0.9; }
+    100% { opacity: 1; }
+}
+
+.task-overdue {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #ef4444;
+    font-weight: 500;
+    margin-top: 5px;
+}
+
+.task-overdue i {
+    font-size: 11px;
+}
+
+/* Стили для кнопок в статистике */
+.stats-tasks-container {
+    margin-top: 20px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    padding: 20px;
+}
+
+.stats-tasks-container h4 {
+    font-size: 16px;
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-primary);
+}
+
+#stats-tasks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* Адаптивность для кнопок управления */
+.task-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.task-btn.archive {
+    background: transparent;
+    border: 1px solid var(--warning);
+    color: var(--warning);
+}
+
+.task-btn.archive:hover {
+    background: var(--warning);
+    color: white;
+}
+
+/* Фильтр для напоминаний */
+.filter-chip[data-filter="reminders"] {
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: white;
+    border: none;
+}
+
+/* Уведомления о напоминаниях */
+.reminder-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #f59e0b, #f97316);
+    color: white;
+    padding: 15px 20px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Улучшенная форма */
+.datetime-inputs {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+#set-now-btn {
+    white-space: nowrap;
+    padding: 12px 15px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+#set-now-btn:hover {
+    background: var(--border);
+}
+
+/* Анимация для новых задач */
+@keyframes highlightTask {
+    0% { background: rgba(59, 130, 246, 0.3); }
+    100% { background: transparent; }
+}
+
+.task-item.new {
+    animation: highlightTask 2s ease;
+}
+
+/* Просроченные задачи в календаре */
+.calendar-day.has-overdue-tasks::after {
+    content: '';
+    position: absolute;
+    bottom: 5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ef4444;
+}
