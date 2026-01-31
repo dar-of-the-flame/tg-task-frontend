@@ -56,7 +56,8 @@ class TaskFlowApp {
             const backendAvailable = await this.checkBackend();
             
             if (!backendAvailable) {
-                throw new Error('Сервер недоступен. Проверьте подключение к интернету.');
+                console.warn('⚠️ Сервер недоступен, работаем в оффлайн режиме');
+                // Продолжаем инициализацию в оффлайн режиме
             }
             
             // 4. Загружаем данные с сервера
@@ -71,14 +72,18 @@ class TaskFlowApp {
             // 6. Инициализация модулей
             if (typeof calendarManager !== 'undefined') calendarManager.init();
             if (typeof statsManager !== 'undefined') statsManager.initCharts();
+            if (typeof telegram !== 'undefined') await telegram.init();
             
-            // 7. Настройка обработчиков
+            // 7. Настройка обработчиков UI
+            ui.setupAllHandlers();
+            
+            // 8. Настройка обработчиков событий
             this.setupEventListeners();
             
-            // 8. Первоначальный рендеринг
+            // 9. Первоначальный рендеринг
             this.updateUI();
             
-            // 9. Скрываем загрузочный экран
+            // 10. Скрываем загрузочный экран
             setTimeout(() => {
                 this.hideLoadingScreen();
                 console.log('✅ TaskFlow инициализирован!');
@@ -325,13 +330,66 @@ class TaskFlowApp {
     }
     
     setupEventListeners() {
-        // ... остальной код обработчиков событий ...
+        // Быстрые фильтры
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', (e) => {
+                const filter = e.currentTarget.dataset.filter;
+                taskFlow.currentFilter = filter;
+                
+                // Обновляем активную кнопку
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                e.currentTarget.classList.add('active');
+                
+                // Обновляем список задач
+                if (typeof taskManager !== 'undefined') {
+                    taskManager.updateAllTaskLists();
+                }
+            });
+        });
+        
+        // Очистка архива
+        const clearArchiveBtn = document.getElementById('clear-archive');
+        if (clearArchiveBtn) {
+            clearArchiveBtn.addEventListener('click', () => {
+                if (typeof archiveManager !== 'undefined') {
+                    archiveManager.clearArchive();
+                }
+            });
+        }
+        
+        // Обновление статистики
+        const refreshStatsBtn = document.getElementById('refresh-stats');
+        if (refreshStatsBtn) {
+            refreshStatsBtn.addEventListener('click', () => {
+                if (typeof statsManager !== 'undefined') {
+                    statsManager.updateStats();
+                }
+            });
+        }
+        
+        // Экспорт статистики
+        const exportStatsBtn = document.getElementById('export-stats');
+        if (exportStatsBtn) {
+            exportStatsBtn.addEventListener('click', () => {
+                taskFlow.exportData();
+            });
+        }
+        
+        // Поиск в архиве
+        const archiveSearch = document.getElementById('archive-search');
+        if (archiveSearch) {
+            archiveSearch.addEventListener('input', (e) => {
+                if (typeof archiveManager !== 'undefined') {
+                    archiveManager.searchInArchive(e.target.value);
+                }
+            });
+        }
     }
     
     updateUI() {
         // Обновляем все страницы
         if (typeof taskManager !== 'undefined') {
-            taskManager.updateTaskList();
+            taskManager.updateAllTaskLists();
         }
         
         if (typeof calendarManager !== 'undefined') {
