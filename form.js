@@ -18,12 +18,12 @@ class FormManager {
             dateInput.min = today.toISOString().split('T')[0];
         }
         
-        // Устанавливаем текущее время + 1 час
-        const nextHour = new Date(today.getTime() + 60 * 60 * 1000);
+        // Устанавливаем текущее время + 5 минут
+        const in5min = new Date(today.getTime() + 5 * 60 * 1000);
         const timeInput = document.getElementById('task-time');
         if (timeInput) {
-            const hours = nextHour.getHours().toString().padStart(2, '0');
-            const minutes = nextHour.getMinutes().toString().padStart(2, '0');
+            const hours = in5min.getHours().toString().padStart(2, '0');
+            const minutes = in5min.getMinutes().toString().padStart(2, '0');
             timeInput.value = `${hours}:${minutes}`;
         }
         
@@ -62,6 +62,11 @@ class FormManager {
                 
                 document.getElementById('task-category').value = e.currentTarget.dataset.category;
             });
+            
+            // Активируем "Личное" по умолчанию
+            if (tag.dataset.category === 'personal') {
+                tag.click();
+            }
         });
         
         // Типы задач
@@ -100,6 +105,11 @@ class FormManager {
                 e.currentTarget.style.background = color;
                 e.currentTarget.style.color = 'white';
             });
+            
+            // Активируем средний приоритет по умолчанию
+            if (btn.dataset.priority === 'medium') {
+                btn.click();
+            }
         });
     }
     
@@ -152,31 +162,37 @@ class FormManager {
             throw new Error('Введите текст задачи');
         }
         
-        // Для заметки не нужны дата и время
+        // Для заметки
         if (type === 'note') {
             return {
                 text,
                 category: category || 'personal',
-                priority: 'medium', // Заметки всегда средний приоритет
+                priority: 'medium',
                 date: null,
                 time: null,
                 reminder: 0,
                 emoji: '📝',
-                is_reminder: false
+                is_reminder: false,
+                task_type: 'note'
             };
         }
         
         // Для напоминания
         if (type === 'reminder') {
+            if (!date || !time) {
+                throw new Error('Для напоминания укажите дату и время');
+            }
+            
             return {
                 text,
                 category: category || 'personal',
-                priority: 'medium', // Напоминания всегда средний приоритет
-                date: date || new Date().toISOString().split('T')[0],
-                time: time || '12:00',
+                priority: 'medium',
+                date: date,
+                time: time,
                 reminder: 0,
                 emoji: '🔔',
-                is_reminder: true
+                is_reminder: true,
+                task_type: 'reminder'
             };
         }
         
@@ -185,11 +201,12 @@ class FormManager {
             text,
             category: category || 'personal',
             priority: priority || 'medium',
-            date: date || new Date().toISOString().split('T')[0],
-            time: time || '',
+            date: date || null,
+            time: time || null,
             reminder: 0,
             emoji: '📝',
-            is_reminder: false
+            is_reminder: false,
+            task_type: 'task'
         };
     }
     
