@@ -85,10 +85,11 @@ class StatsManager {
     
     // Обновление статистики
     updateStats() {
-        const totalTasks = taskFlow.allTasks.length + taskFlow.archivedTasks.length;
+        const allActiveTasks = taskFlow.allTasks.filter(t => !t.archived);
+        const totalTasks = allActiveTasks.length + taskFlow.archivedTasks.length;
         const completedTasks = taskFlow.archivedTasks.filter(t => t.completed).length;
         const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-        const activeTasks = taskFlow.allTasks.length;
+        const activeTasks = allActiveTasks.filter(t => !t.completed).length;
         
         // Обновляем основные показатели
         this.updateElement('total-tasks', totalTasks);
@@ -130,6 +131,28 @@ class StatsManager {
         this.updateElement('avg-per-day', avgPerDay.toFixed(1));
         this.updateElement('best-day', bestDay);
         this.updateElement('overdue-tasks', overdueTasks);
+        
+        // Отображаем список задач в статистике
+        this.renderTasksInStats();
+    }
+    
+    // Отображение задач в статистике
+    renderTasksInStats() {
+        const container = document.getElementById('stats-tasks-list');
+        if (!container) return;
+        
+        // Показываем все активные задачи (не архивные)
+        const activeTasks = taskFlow.allTasks.filter(task => !task.archived);
+        
+        if (activeTasks.length === 0) {
+            container.innerHTML = '<div class="empty-state"><p>Нет активных задач</p></div>';
+            return;
+        }
+        
+        // Используем taskManager для рендеринга
+        if (typeof taskManager !== 'undefined') {
+            taskManager.renderTasks(activeTasks, 'stats-tasks-list');
+        }
     }
     
     // Подсчет дней подряд
@@ -205,7 +228,7 @@ class StatsManager {
     calculateOverdueTasks() {
         const today = new Date().toISOString().split('T')[0];
         return taskFlow.allTasks.filter(task => 
-            task.date && task.date < today && !task.completed
+            task.date && task.date < today && !task.completed && !task.archived
         ).length;
     }
     
