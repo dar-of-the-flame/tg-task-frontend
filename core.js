@@ -1,10 +1,8 @@
-// Модуль ядра приложения
 const CONFIG = {
     BACKEND_URL: 'https://tg-task-bot-service.onrender.com',
     STORAGE_KEY: 'taskflow_data'
 };
 
-// Глобальные переменные
 let allTasks = [];
 let archivedTasks = [];
 let calendarNotes = [];
@@ -17,7 +15,6 @@ let activeFilters = {
     status: ['active']
 };
 
-// Функции для работы с хранилищем
 function saveToStorage() {
     const data = {
         tasks: allTasks,
@@ -40,7 +37,6 @@ function loadFromStorage() {
     };
 }
 
-// Обработка задач (архивация выполенных и удаленных)
 function processTasks() {
     const now = new Date();
     
@@ -57,10 +53,8 @@ function processTasks() {
     saveToStorage();
 }
 
-// Форматирование даты
 function formatDate(dateString) {
     if (!dateString) return '';
-    
     const date = new Date(dateString);
     const today = new Date();
     const yesterday = new Date(today);
@@ -68,13 +62,9 @@ function formatDate(dateString) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     
-    if (date.toDateString() === today.toDateString()) {
-        return 'Сегодня';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-        return 'Вчера';
-    } else if (date.toDateString() === tomorrow.toDateString()) {
-        return 'Завтра';
-    }
+    if (date.toDateString() === today.toDateString()) return 'Сегодня';
+    if (date.toDateString() === yesterday.toDateString()) return 'Вчера';
+    if (date.toDateString() === tomorrow.toDateString()) return 'Завтра';
     
     return date.toLocaleDateString('ru-RU', {
         day: 'numeric',
@@ -83,28 +73,16 @@ function formatDate(dateString) {
     });
 }
 
-// Получение названий категорий
 function getCategoryName(category) {
-    const categories = {
-        work: 'Работа',
-        personal: 'Личное',
-        health: 'Здоровье',
-        study: 'Учёба'
-    };
+    const categories = { work: 'Работа', personal: 'Личное', health: 'Здоровье', study: 'Учёба' };
     return categories[category] || 'Другое';
 }
 
-// Получение названий приоритетов
 function getPriorityName(priority) {
-    const priorities = {
-        high: 'Высокий',
-        medium: 'Средний',
-        low: 'Низкий'
-    };
+    const priorities = { high: 'Высокий', medium: 'Средний', low: 'Низкий' };
     return priorities[priority] || 'Средний';
 }
 
-// Проверка соединения с бэкендом
 async function checkBackendConnection() {
     try {
         const response = await fetch(`${CONFIG.BACKEND_URL}/health`, {
@@ -118,35 +96,19 @@ async function checkBackendConnection() {
     }
 }
 
-// Синхронизация с сервером
 async function syncWithServer() {
     if (!userId) return false;
     
     try {
-        const response = await fetch(`${CONFIG.BACKEND_URL}/api/tasks?user_id=${userId}`, {
-            method: 'GET',
-            signal: AbortSignal.timeout(5000)
-        });
-        
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/tasks?user_id=${userId}`);
         if (response.ok) {
-            const serverTasks = await response.json();
-            
-            // Объединяем с локальными
-            const localTasks = loadFromStorage().tasks || [];
-            const taskMap = new Map();
-            
-            serverTasks.forEach(task => taskMap.set(task.id, task));
-            localTasks.forEach(task => {
-                if (!taskMap.has(task.id)) {
-                    taskMap.set(task.id, task);
-                }
-            });
-            
-            allTasks = Array.from(taskMap.values()).filter(task => !task.completed && !task.deleted);
-            archivedTasks = Array.from(taskMap.values()).filter(task => task.completed || task.deleted);
-            
-            saveToStorage();
-            return true;
+            const data = await response.json();
+            if (data.status === 'ok' && data.tasks) {
+                allTasks = data.tasks.filter(task => !task.completed && !task.deleted);
+                archivedTasks = data.tasks.filter(task => task.completed || task.deleted);
+                saveToStorage();
+                return true;
+            }
         }
     } catch (error) {
         console.warn('Ошибка синхронизации:', error.message);
@@ -154,7 +116,6 @@ async function syncWithServer() {
     return false;
 }
 
-// Экспорт глобального объекта
 window.taskFlow = {
     CONFIG,
     allTasks,
@@ -164,7 +125,6 @@ window.taskFlow = {
     currentPage,
     currentFilter,
     activeFilters,
-    
     saveToStorage,
     loadFromStorage,
     processTasks,
