@@ -503,6 +503,229 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </button>
                 </div>
             `;
+
+            // app.js - исправленная инициализация
+class TaskFlowApp {
+    constructor() {
+        this.isInitialized = false;
+    }
+    
+    async init() {
+        try {
+            console.log('🚀 Инициализация TaskFlow...');
+            
+            // 1. Инициализация Telegram
+            await telegram.init();
+            
+            // 2. Проверяем бэкенд
+            await telegram.checkBackend();
+            
+            if (!telegram.isBackendAvailable) {
+                console.log('⚠️ Работаем в оффлайн-режиме');
+                // Не показываем тост, просто логируем
+            } else {
+                console.log('✅ Бэкенд доступен');
+                // Пробуем синхронизировать данные
+                try {
+                    await taskFlow.syncWithServer();
+                } catch (syncError) {
+                    console.warn('Ошибка синхронизации:', syncError);
+                }
+            }
+            
+            // 3. Инициализация UI
+            ui.initTheme();
+            ui.updateCurrentDate();
+            formManager.init();
+            
+            // 4. Загрузка данных
+            await this.loadData();
+            
+            // 5. Инициализация модулей
+            calendarManager.init();
+            
+            // 6. Настройка обработчиков
+            this.setupEventListeners();
+            
+            // 7. Первоначальный рендеринг
+            this.updateUI();
+            
+            // 8. Скрываем загрузочный экран
+            setTimeout(() => {
+                const loadingScreen = document.getElementById('loading-screen');
+                if (loadingScreen) {
+                    loadingScreen.style.display = 'none';
+                }
+                document.querySelector('.app-container').style.display = 'flex';
+            }, 500);
+            
+            this.isInitialized = true;
+            console.log('✅ TaskFlow инициализирован!');
+            
+        } catch (error) {
+            console.error('❌ Ошибка инициализации:', error);
+            
+            // Все равно показываем интерфейс
+            const loadingScreen = document.getElementById('loading-screen');
+            if (loadingScreen) {
+                loadingScreen.style.display = 'none';
+            }
+            document.querySelector('.app-container').style.display = 'flex';
+            
+            // Показываем сообщение об ошибке
+            if (typeof showToast === 'function') {
+                showToast('Ошибка загрузки приложения', 'error');
+            }
+        }
+    }
+    
+    async loadData() {
+        try {
+            // Загружаем из локального хранилища
+            const localData = taskFlow.loadFromStorage();
+            
+            if (localData.tasks) {
+                taskFlow.allTasks = localData.tasks;
+                taskFlow.processTasks();
+                
+                console.log('📁 Загружено задач:', taskFlow.allTasks.length);
+                console.log('📁 Архивных задач:', taskFlow.archivedTasks.length);
+                
+                // Если задач нет, создаем демо-задачу
+                if (taskFlow.allTasks.length === 0) {
+                    this.createDemoTask();
+                }
+            }
+            
+        } catch (error) {
+            console.error('Ошибка загрузки данных:', error);
+            this.createDemoTask();
+        }
+    }
+    
+    createDemoTask() {
+        const now = new Date();
+        
+        taskFlow.allTasks = [{
+            id: Date.now(),
+            user_id: taskFlow.userId,
+            text: 'Добро пожаловать в TaskFlow!',
+            category: 'personal',
+            priority: 'medium',
+            date: now.toISOString().split('T')[0],
+            time: '10:00',
+            completed: false,
+            created_at: now.toISOString()
+        }];
+        
+        taskFlow.saveToStorage();
+        console.log('📝 Создана демо-задача');
+    }
+    
+    setupEventListeners() {
+        // Форма задачи
+        const taskForm = document.getElementById('task-form');
+        if (taskForm) {
+            taskForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                try {
+                    ui.showLoading(true);
+                    
+                    // Получаем данные формы
+                    const formData = formManager.getFormData();
+                    
+                    // Создаем задачу
+                    const taskData = {
+                        ...formData,
+                        id: Date.now(),
+                        user_id: taskFlow.userId,
+                        completed: false,
+                        created_at: new Date().toISOString()
+                    };
+                    
+                    // Сохраняем задачу
+                    const result = await taskManager.createTask(taskData);
+                    
+                    if (result.success) {
+                        // Закрываем форму
+                        ui.closeModal('task-modal');
+                        formManager.resetForm();
+                        
+                        // Обновляем UI
+                        this.updateUI();
+                        
+                        // Показываем уведомление
+                        showToast('Задача сохранена!', 'success');
+                    } else {
+                        showToast(result.error || 'Ошибка сохранения', 'error');
+                    }
+                    
+                } catch (error) {
+                    console.error('Ошибка:', error);
+                    showToast(error.message || 'Ошибка сохранения', 'error');
+                } finally {
+                    ui.showLoading(false);
+                }
+            });
+        }
+        
+        // Другие обработчики...
+    }
+    
+    updateUI() {
+        // Обновляем все страницы
+        if (typeof taskManager !== 'undefined') {
+            taskManager.updateTaskList();
+        }
+        
+        if (typeof calendarManager !== 'undefined') {
+            calendarManager.renderCalendar();
+            calendarManager.updateDayTasks();
+        }
+        
+        if (typeof archiveManager !== 'undefined') {
+            archiveManager.renderArchive();
+        }
+        
+        if (typeof statsManager !== 'undefined') {
+            statsManager.updateStats();
+        }
+    }
+}
+
+// Глобальные функции
+window.openTaskForm = (options = {}) => {
+    formManager.resetForm();
+    
+    if (options.type) {
+        document.querySelector(`.type-tab[data-type="${options.type}"]`)?.click();
+    }
+    
+    if (options.date) {
+        document.getElementById('task-date').value = options.date;
+    }
+    
+    ui.openModal('task-modal');
+    
+    // Фокус на тексте
+    setTimeout(() => {
+        document.getElementById('task-text')?.focus();
+    }, 100);
+};
+
+window.openQuickNoteModal = () => {
+    ui.openModal('quick-note-modal');
+    setTimeout(() => {
+        document.getElementById('quick-note-text')?.focus();
+    }, 100);
+};
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', () => {
+    window.taskFlowApp = new TaskFlowApp();
+    window.taskFlowApp.init();
+});
         }
     }
 });
