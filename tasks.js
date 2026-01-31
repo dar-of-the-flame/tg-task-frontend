@@ -31,41 +31,71 @@ class TaskManager {
             filteredTasks = filteredTasks.filter(task => task.completed);
         }
         if (taskFlow.activeFilters.status.includes('overdue')) {
-            const today = new Date().toISOString().split('T')[0];
-            filteredTasks = filteredTasks.filter(task => 
-                task.date && task.date < today && !task.completed && !task.archived
-            );
+            const today = new Date();
+            const todayStr = taskFlow.formatDateForInput(today);
+            filteredTasks = filteredTasks.filter(task => {
+                if (!task.date) return false;
+                let taskDate = task.date;
+                if (taskDate.includes('T')) {
+                    taskDate = taskDate.split('T')[0];
+                }
+                return taskDate < todayStr && !task.completed && !task.archived;
+            });
         }
         if (taskFlow.activeFilters.status.includes('reminders')) {
             filteredTasks = filteredTasks.filter(task => task.is_reminder);
         }
         
         // Быстрые фильтры
-        const today = new Date().toISOString().split('T')[0];
+        const today = new Date();
+        const todayStr = taskFlow.formatDateForInput(today);
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        const tomorrowStr = taskFlow.formatDateForInput(tomorrow);
         
         switch (taskFlow.currentFilter) {
             case 'today':
-                filteredTasks = filteredTasks.filter(task => task.date === today && !task.archived);
+                filteredTasks = filteredTasks.filter(task => {
+                    if (!task.date) return false;
+                    let taskDate = task.date;
+                    if (taskDate.includes('T')) {
+                        taskDate = taskDate.split('T')[0];
+                    }
+                    return taskDate === todayStr && !task.archived;
+                });
                 break;
             case 'tomorrow':
-                filteredTasks = filteredTasks.filter(task => task.date === tomorrowStr && !task.archived);
+                filteredTasks = filteredTasks.filter(task => {
+                    if (!task.date) return false;
+                    let taskDate = task.date;
+                    if (taskDate.includes('T')) {
+                        taskDate = taskDate.split('T')[0];
+                    }
+                    return taskDate === tomorrowStr && !task.archived;
+                });
                 break;
             case 'week':
                 const weekEnd = new Date();
                 weekEnd.setDate(weekEnd.getDate() + 7);
                 filteredTasks = filteredTasks.filter(task => {
                     if (!task.date || task.archived) return false;
-                    const taskDate = new Date(task.date);
-                    return taskDate <= weekEnd;
+                    let taskDate = task.date;
+                    if (taskDate.includes('T')) {
+                        taskDate = taskDate.split('T')[0];
+                    }
+                    const taskDateObj = new Date(taskDate);
+                    return taskDateObj <= weekEnd;
                 });
                 break;
             case 'overdue':
-                filteredTasks = filteredTasks.filter(task => 
-                    task.date && task.date < today && !task.completed && !task.archived
-                );
+                filteredTasks = filteredTasks.filter(task => {
+                    if (!task.date) return false;
+                    let taskDate = task.date;
+                    if (taskDate.includes('T')) {
+                        taskDate = taskDate.split('T')[0];
+                    }
+                    return taskDate < todayStr && !task.completed && !task.archived;
+                });
                 break;
             case 'reminders':
                 filteredTasks = filteredTasks.filter(task => task.is_reminder && !task.archived);
@@ -106,14 +136,19 @@ class TaskManager {
         
         // Сортируем задачи
         const sortedTasks = [...tasks].sort((a, b) => {
-            // Сначала невыполненные
+            // Сначала напоминания (срочные)
+            if (a.is_reminder !== b.is_reminder) {
+                return a.is_reminder ? -1 : 1;
+            }
+            
+            // Потом невыполненные
             if (a.completed !== b.completed) {
                 return a.completed ? 1 : -1;
             }
             
             // Потом по дате (сначала ближайшие)
-            const dateA = new Date(a.date || '9999-12-31');
-            const dateB = new Date(b.date || '9999-12-31');
+            const dateA = a.date ? new Date(a.date) : new Date('9999-12-31');
+            const dateB = b.date ? new Date(b.date) : new Date('9999-12-31');
             if (dateA.getTime() !== dateB.getTime()) {
                 return dateA - dateB;
             }
@@ -134,24 +169,34 @@ class TaskManager {
         const reminderClass = isReminder ? 'reminder' : '';
         
         // Проверяем просроченность
-        const today = new Date().toISOString().split('T')[0];
-        const isOverdue = task.date && task.date < today && !task.completed && !task.archived;
+        const today = new Date();
+        const todayStr = taskFlow.formatDateForInput(today);
+        let taskDate = task.date;
+        if (taskDate && taskDate.includes('T')) {
+            taskDate = taskDate.split('T')[0];
+        }
+        const isOverdue = taskDate && taskDate < todayStr && !task.completed && !task.archived;
         const overdueClass = isOverdue ? 'overdue' : '';
         
+        // Для напоминаний добавляем специальный стиль
+        const reminderStyle = isReminder ? 'border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.1);' : '';
+        
         return `
-            <div class="task-item ${priorityClass} ${completedClass} ${reminderClass} ${overdueClass}" data-id="${task.id}">
+            <div class="task-item ${priorityClass} ${completedClass} ${reminderClass} ${overdueClass}" 
+                 data-id="${task.id}" style="${reminderStyle}">
                 <div class="task-header">
                     <div class="task-title">
                         <span class="task-emoji">${task.emoji || '📝'}</span>
                         ${task.text}
-                        ${isReminder ? ' <i class="fas fa-bell reminder-badge"></i>' : ''}
+                        ${isReminder ? ' <i class="fas fa-bell" style="color: #f59e0b;"></i>' : ''}
                     </div>
                     <div class="task-category">${taskFlow.getCategoryName(task.category)}</div>
                 </div>
                 <div class="task-meta">
-                    ${task.date ? `<div class="task-date">${taskFlow.formatDate(task.date)}</div>` : ''}
+                    ${task.date ? `<div class="task-date"><i class="far fa-calendar"></i> ${taskFlow.formatDate(task.date)}</div>` : ''}
                     ${task.time ? `<div class="task-time"><i class="far fa-clock"></i> ${task.time}</div>` : ''}
                     ${isOverdue ? `<div class="task-overdue"><i class="fas fa-exclamation-triangle"></i> Просрочено</div>` : ''}
+                    ${isReminder ? `<div class="task-reminder"><i class="fas fa-bell"></i> Напоминание</div>` : ''}
                 </div>
                 <div class="task-actions">
                     ${isReminder ? '' : `
@@ -184,6 +229,15 @@ class TaskManager {
         if (taskIndex === -1) return;
         
         const task = taskFlow.allTasks[taskIndex];
+        
+        // Напоминания нельзя отмечать выполненными
+        if (task.is_reminder) {
+            if (typeof showToast === 'function') {
+                showToast('Напоминания отмечаются автоматически после отправки', 'warning');
+            }
+            return;
+        }
+        
         const newCompletedState = !task.completed;
         
         // Обновляем локально
@@ -238,6 +292,20 @@ class TaskManager {
                 throw new Error('Введите текст задачи');
             }
             
+            // Для напоминания - проверяем дату и время
+            if (taskData.is_reminder) {
+                if (!taskData.date || !taskData.time) {
+                    throw new Error('Для напоминания укажите дату и время');
+                }
+                
+                // Проверяем, что дата напоминания не в прошлом
+                const reminderDate = new Date(`${taskData.date}T${taskData.time}`);
+                const now = new Date();
+                if (reminderDate < now) {
+                    throw new Error('Напоминание нельзя установить на прошедшее время');
+                }
+            }
+            
             // Формируем объект задачи
             const task = {
                 id: taskFlow.generateTaskId(),
@@ -248,7 +316,7 @@ class TaskManager {
                 date: taskData.date,
                 time: taskData.time || '',
                 reminder: taskData.reminder || 0,
-                emoji: taskData.emoji || '📝',
+                emoji: taskData.emoji || (taskData.is_reminder ? '🔔' : '📝'),
                 is_reminder: taskData.is_reminder || false,
                 completed: false,
                 deleted: false,
@@ -281,6 +349,13 @@ class TaskManager {
             // Обновляем статистику
             if (typeof statsManager !== 'undefined') {
                 statsManager.updateStats();
+            }
+            
+            // Показываем сообщение о напоминании
+            if (taskData.is_reminder) {
+                if (typeof showToast === 'function') {
+                    showToast(`Напоминание создано! Оно придет в чат с ботом в ${taskData.time} ${taskFlow.formatDate(taskData.date)}`, 'success');
+                }
             }
             
             return { success: true, task };
@@ -332,6 +407,7 @@ class TaskManager {
         // Обновляем календарь
         if (typeof calendarManager !== 'undefined') {
             calendarManager.updateDayTasks();
+            calendarManager.renderCalendar();
         }
         
         // Обновляем архив
@@ -354,8 +430,13 @@ class TaskManager {
         const completedCount = taskFlow.archivedTasks.filter(t => t.completed).length;
         const overdueCount = taskFlow.allTasks.filter(t => {
             if (!t.date) return false;
-            const today = new Date().toISOString().split('T')[0];
-            return t.date < today && !t.completed && !t.archived;
+            const today = new Date();
+            const todayStr = taskFlow.formatDateForInput(today);
+            let taskDate = t.date;
+            if (taskDate.includes('T')) {
+                taskDate = taskDate.split('T')[0];
+            }
+            return taskDate < todayStr && !t.completed && !t.archived;
         }).length;
         
         // Обновляем элементы на странице статистики
