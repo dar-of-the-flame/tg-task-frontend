@@ -76,12 +76,13 @@ class UIManager {
         switch (page) {
             case 'tasks':
                 if (typeof taskManager !== 'undefined') {
-                    taskManager.updateTaskList();
+                    taskManager.updateAllTaskLists();
                 }
                 break;
             case 'calendar':
                 if (typeof calendarManager !== 'undefined') {
-                    calendarManager.init();
+                    calendarManager.renderCalendar();
+                    calendarManager.updateDayTasks();
                 }
                 break;
             case 'archive':
@@ -210,8 +211,35 @@ class UIManager {
                 fabMenu.classList.contains('open')) {
                 fabMain.classList.remove('rotate');
                 fabMenu.classList.remove('open');
-                telegram.hideBackButton();
+                if (typeof telegram !== 'undefined') {
+                    telegram.hideBackButton();
+                }
             }
+        });
+        
+        // Кнопки в FAB меню
+        document.querySelectorAll('.fab-menu-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                const action = e.currentTarget.dataset.action;
+                
+                switch(action) {
+                    case 'quick-task':
+                        document.getElementById('task-text').value = '';
+                        document.querySelector('[data-type="task"]')?.click();
+                        this.openModal('task-modal');
+                        break;
+                    case 'add-note':
+                        document.getElementById('task-text').value = '';
+                        document.querySelector('[data-type="note"]')?.click();
+                        this.openModal('task-modal');
+                        break;
+                    case 'add-reminder':
+                        document.getElementById('task-text').value = '';
+                        document.querySelector('[data-type="reminder"]')?.click();
+                        this.openModal('task-modal');
+                        break;
+                }
+            });
         });
     }
     
@@ -236,6 +264,61 @@ class UIManager {
                 telegram.hideBackButton();
             }
         });
+        
+        // Применение фильтров
+        const applyFiltersBtn = document.getElementById('apply-filters');
+        const resetFiltersBtn = document.getElementById('reset-filters');
+        
+        if (applyFiltersBtn) {
+            applyFiltersBtn.addEventListener('click', () => {
+                const categories = Array.from(document.querySelectorAll('input[name="category"]:checked'))
+                    .map(cb => cb.value);
+                const priorities = Array.from(document.querySelectorAll('input[name="priority"]:checked'))
+                    .map(cb => cb.value);
+                const statuses = Array.from(document.querySelectorAll('input[name="status"]:checked'))
+                    .map(cb => cb.value);
+                
+                if (typeof taskManager !== 'undefined') {
+                    taskManager.applyFilters(categories, priorities, statuses);
+                }
+            });
+        }
+        
+        if (resetFiltersBtn) {
+            resetFiltersBtn.addEventListener('click', () => {
+                if (typeof taskManager !== 'undefined') {
+                    taskManager.resetFilters();
+                }
+            });
+        }
+    }
+    
+    // Настройка навигации
+    setupNavigation() {
+        // Кнопки навигации
+        document.querySelectorAll('.nav-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const page = e.currentTarget.dataset.page;
+                this.switchPage(page);
+            });
+        });
+        
+        // Кнопка темы
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                this.toggleTheme();
+            });
+        }
+        
+        // Кнопка поиска
+        const searchBtn = document.getElementById('search-btn');
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                // Реализуйте поиск
+                alert('Функция поиска в разработке');
+            });
+        }
     }
     
     // Обновление текущей даты в header
@@ -269,6 +352,75 @@ class UIManager {
             timeInput.value = `${hours}:${minutes}`;
         }
     }
+    
+    // Настройка всех обработчиков
+    setupAllHandlers() {
+        this.setupFAB();
+        this.setupFilters();
+        this.setupNavigation();
+        this.setupFormDefaults();
+        this.setupModalHandlers();
+    }
+    
+    // Настройка обработчиков модальных окон
+    setupModalHandlers() {
+        // Закрытие модалок
+        document.querySelectorAll('.close-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.closeAllModals();
+            });
+        });
+        
+        // Форма создания задачи
+        const taskForm = document.getElementById('task-form');
+        if (taskForm) {
+            taskForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                try {
+                    const formData = formManager.getFormData();
+                    formData.user_id = taskFlow.userId;
+                    
+                    const result = await taskManager.createTask(formData);
+                    
+                    if (result.success) {
+                        this.closeAllModals();
+                        formManager.resetForm();
+                        this.showToast('Задача создана!', 'success');
+                    } else {
+                        throw new Error(result.error);
+                    }
+                } catch (error) {
+                    console.error('Ошибка создания задачи:', error);
+                    alert(error.message);
+                }
+            });
+        }
+        
+        // Форма быстрой заметки
+        const quickNoteForm = document.getElementById('quick-note-form');
+        if (quickNoteForm) {
+            quickNoteForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = document.getElementById('quick-note-text').value;
+                if (text.trim()) {
+                    // Создаем заметку
+                    const note = {
+                        text: text,
+                        category: 'personal',
+                        priority: 'low',
+                        is_reminder: false,
+                        task_type: 'note'
+                    };
+                    
+                    // Добавляем задачу
+                    taskManager.createTask(note);
+                    this.closeAllModals();
+                    document.getElementById('quick-note-text').value = '';
+                }
+            });
+        }
+    }
 }
 
 // Создаем и экспортируем экземпляр
@@ -278,3 +430,16 @@ window.ui = ui;
 // Глобальные функции для вызова из HTML
 window.showToast = (message, type) => ui.showToast(message, type);
 window.switchPage = (page) => ui.switchPage(page);
+window.openTaskForm = (options = {}) => {
+    formManager.resetForm();
+    
+    if (options.type) {
+        document.querySelector(`[data-type="${options.type}"]`)?.click();
+    }
+    
+    if (options.date) {
+        document.getElementById('task-date').value = options.date;
+    }
+    
+    ui.openModal('task-modal');
+};
