@@ -1,3 +1,4 @@
+// Telegram WebApp интеграция
 class TelegramIntegration {
     constructor() {
         this.tg = window.Telegram?.WebApp || null;
@@ -8,101 +9,118 @@ class TelegramIntegration {
     
     init() {
         if (!this.tg) {
-            console.log('Браузерный режим');
-            taskFlow.userId = `web_${Date.now()}`;
-            return this.setupWebMode();
+            console.log('🌐 Браузерный режим');
+            this.setupWebMode();
+            return Promise.resolve(true);
         }
         
         try {
+            // Важно: сначала ready(), потом expand()
             this.tg.ready();
             this.tg.expand();
             
+            // Получаем данные пользователя
             this.user = this.tg.initDataUnsafe?.user;
+            
             if (this.user?.id) {
-                taskFlow.userId = this.user.id;
-                console.log('Telegram user:', this.user);
+                console.log('👤 Telegram user:', this.user);
+                
+                // Настройка кнопки "Назад"
+                this.tg.BackButton.onClick(() => {
+                    this.hideBackButton();
+                    
+                    // Закрываем все модальные окна
+                    ui.closeAllModals();
+                    
+                    // Закрываем FAB меню
+                    const fabMain = document.getElementById('fab-main');
+                    const fabMenu = document.getElementById('fab-menu');
+                    if (fabMain) fabMain.classList.remove('rotate');
+                    if (fabMenu) fabMenu.classList.remove('open');
+                    
+                    // Закрываем панель фильтров
+                    const filtersPanel = document.getElementById('filters-panel');
+                    if (filtersPanel) {
+                        filtersPanel.classList.remove('open');
+                    }
+                });
+                
+                this.tg.MainButton.setText('Готово').hide();
+                
             } else {
-                taskFlow.userId = `tg_noauth_${Date.now()}`;
-                console.log('Telegram без авторизации');
+                console.log('👤 Telegram без авторизации');
             }
             
             this.isReady = true;
-            return true;
+            return Promise.resolve(true);
+            
         } catch (error) {
-            console.error('Ошибка Telegram:', error);
-            return this.setupWebMode();
+            console.error('❌ Ошибка Telegram:', error);
+            this.setupWebMode();
+            return Promise.resolve(true);
         }
     }
     
-    async sendTaskToBackend(taskData) {
-        if (!this.isBackendAvailable) return false;
+    setupWebMode() {
+        // Создаем мок-объект для браузерного режима
+        this.user = {
+            id: `web_${Date.now()}`,
+            username: 'web_user',
+            first_name: 'Web',
+            last_name: 'User'
+        };
         
-        try {
-            const response = await fetch(`${taskFlow.CONFIG.BACKEND_URL}/api/new_task`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(taskData),
-                signal: AbortSignal.timeout(5000)
-            });
-            
-            if (response.ok) {
-                await response.json();
-                return true;
-            }
-            return false;
-        } catch (error) {
-            console.warn('Ошибка отправки:', error.message);
-            this.isBackendAvailable = false;
-            return false;
-        }
+        this.isReady = true;
+        console.log('🌐 Режим браузера активирован');
     }
     
     async checkBackend() {
         try {
             const response = await fetch(`${taskFlow.CONFIG.BACKEND_URL}/health`, {
-                method: 'GET',
-                signal: AbortSignal.timeout(3000)
+                signal: AbortSignal.timeout(5000)
             });
             
             this.isBackendAvailable = response.ok;
+            console.log('🌐 Бэкенд доступен:', this.isBackendAvailable);
             return this.isBackendAvailable;
+            
         } catch (error) {
-            console.warn('Бэкенд недоступен:', error.message);
+            console.warn('🌐 Бэкенд недоступен:', error.message);
             this.isBackendAvailable = false;
             return false;
         }
     }
     
-    setupWebMode() {
-        console.log('Запуск в браузерном режиме');
-        taskFlow.userId = `web_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        return true;
-    }
-    
+    // Показать кнопку "Назад"
     showBackButton() {
         if (this.tg?.BackButton) {
             this.tg.BackButton.show();
-            this.tg.BackButton.onClick(() => {
-                this.hideBackButton();
-                if (typeof ui !== 'undefined') ui.closeAllModals();
-            });
         }
     }
     
+    // Скрыть кнопку "Назад"
     hideBackButton() {
         if (this.tg?.BackButton) {
             this.tg.BackButton.hide();
         }
     }
     
-    sendToBot(data) {
-        if (!this.tg || !this.isReady) return;
-        try {
-            this.tg.sendData(JSON.stringify(data));
-        } catch (error) {
-            console.warn('Ошибка отправки в бота:', error);
+    // Показать основную кнопку
+    showMainButton(text, callback) {
+        if (this.tg?.MainButton) {
+            this.tg.MainButton.setText(text).show();
+            this.tg.MainButton.onClick(callback);
+        }
+    }
+    
+    // Скрыть основную кнопку
+    hideMainButton() {
+        if (this.tg?.MainButton) {
+            this.tg.MainButton.hide();
         }
     }
 }
 
-window.telegram = new TelegramIntegration();
+// Создаем и экспортируем экземпляр
+const telegram = new TelegramIntegration();
+window.telegram = telegram;
