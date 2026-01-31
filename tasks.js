@@ -70,24 +70,62 @@ class TaskManager {
         return filteredTasks;
     }
     
-    // Рендеринг списка задач
-    renderTasks(tasks) {
+     renderTasks(tasks) {
         const container = document.getElementById('tasks-list');
         const emptyState = document.getElementById('empty-tasks');
         
-        if (!tasks || tasks.length === 0) {
-            if (container) container.innerHTML = '';
-            if (emptyState) emptyState.style.display = 'block';
+        if (!container) {
+            console.error('Контейнер tasks-list не найден!');
             return;
         }
         
-        if (emptyState) emptyState.style.display = 'none';
-        if (!container) return;
+        // Всегда скрываем пустое состояние сначала
+        if (emptyState) {
+            emptyState.style.display = 'none';
+        }
         
-        container.innerHTML = tasks.map(task => `
-            <div class="task-item priority-${task.priority} ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+        if (!tasks || tasks.length === 0) {
+            container.innerHTML = '';
+            if (emptyState) {
+                emptyState.style.display = 'block';
+            }
+            return;
+        }
+        
+        // Сортируем задачи по дате и приоритету
+        const sortedTasks = [...tasks].sort((a, b) => {
+            // Сначала невыполненные
+            if (a.completed !== b.completed) {
+                return a.completed ? 1 : -1;
+            }
+            
+            // По дате
+            const dateA = new Date(a.date || '9999-12-31');
+            const dateB = new Date(b.date || '9999-12-31');
+            if (dateA.getTime() !== dateB.getTime()) {
+                return dateA - dateB;
+            }
+            
+            // По приоритету
+            const priorityOrder = { high: 3, medium: 2, low: 1 };
+            return (priorityOrder[b.priority] || 1) - (priorityOrder[a.priority] || 1);
+        });
+        
+        container.innerHTML = sortedTasks.map(task => this.renderTaskItem(task)).join('');
+    }
+    
+    renderTaskItem(task) {
+        const isCompleted = task.completed;
+        const priorityClass = `priority-${task.priority || 'medium'}`;
+        const completedClass = isCompleted ? 'completed' : '';
+        
+        return `
+            <div class="task-item ${priorityClass} ${completedClass}" data-id="${task.id}">
                 <div class="task-header">
-                    <div class="task-title">${task.text}</div>
+                    <div class="task-title">
+                        <span class="task-emoji">${task.emoji || '📝'}</span>
+                        ${task.text}
+                    </div>
                     <div class="task-category">${taskFlow.getCategoryName(task.category)}</div>
                 </div>
                 <div class="task-meta">
@@ -95,15 +133,44 @@ class TaskManager {
                     ${task.time ? `<div class="task-time"><i class="far fa-clock"></i> ${task.time}</div>` : ''}
                 </div>
                 <div class="task-actions">
-                    <button class="task-btn complete" onclick="taskManager.completeTask('${task.id}')">
-                        <i class="fas fa-check"></i>
+                    <button class="task-btn complete" onclick="taskManager.toggleComplete('${task.id}')" 
+                            title="${isCompleted ? 'Вернуть в работу' : 'Выполнить'}">
+                        <i class="fas ${isCompleted ? 'fa-redo' : 'fa-check'}"></i>
                     </button>
-                    <button class="task-btn delete" onclick="taskManager.deleteTask('${task.id}')">
+                    <button class="task-btn delete" onclick="taskManager.deleteTask('${task.id}')" title="Удалить">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             </div>
-        `).join('');
+        `;
+    }
+    
+    async toggleComplete(taskId) {
+        const taskIndex = taskFlow.allTasks.findIndex(t => t.id == taskId);
+        if (taskIndex === -1) return;
+        
+        const task = taskFlow.allTasks[taskIndex];
+        task.completed = !task.completed;
+        
+        if (task.completed) {
+            task.completed_at = new Date().toISOString();
+        } else {
+            task.completed_at = null;
+        }
+        
+        // Сохраняем на сервер
+        if (telegram.isBackendAvailable) {
+            await telegram.sendTaskToBackend(task);
+        }
+        
+        taskFlow.processTasks();
+        this.updateTaskList();
+        
+        // Показываем уведомление
+        const message = task.completed ? 'Задача выполнена!' : 'Задача возвращена в работу';
+        if (typeof showToast === 'function') {
+            showToast(message, 'success');
+        }
     }
     
     // Создание новой задачи
