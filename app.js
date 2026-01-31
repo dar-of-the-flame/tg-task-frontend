@@ -1,4 +1,3 @@
-// app.js - ИСПРАВЛЕННАЯ ВЕРСИЯ (без дублирования)
 class TaskFlowApp {
     constructor() {
         this.isInitialized = false;
@@ -12,15 +11,19 @@ class TaskFlowApp {
             await telegram.init();
             
             // 2. Проверка бэкенда
-            await this.checkBackend();
+            const isBackendAvailable = await telegram.checkBackend();
             
-            // 3. Инициализация UI
+            if (!isBackendAvailable) {
+                throw new Error('Не удалось подключиться к серверу');
+            }
+            
+            // 3. Загрузка данных с сервера
+            await this.loadDataFromServer();
+            
+            // 4. Инициализация UI
             ui.initTheme();
             ui.updateCurrentDate();
             formManager.init();
-            
-            // 4. Загрузка данных
-            await this.loadData();
             
             // 5. Инициализация модулей
             calendarManager.init();
@@ -43,80 +46,61 @@ class TaskFlowApp {
             this.isInitialized = true;
             console.log('✅ TaskFlow инициализирован!');
             
+            if (typeof showToast === 'function') {
+                showToast('Приложение загружено', 'success');
+            }
+            
         } catch (error) {
             console.error('❌ Ошибка инициализации:', error);
             
-            // Все равно показываем интерфейс
+            // Показываем сообщение об ошибке
             const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) loadingScreen.style.display = 'none';
-            document.querySelector('.app-container').style.display = 'flex';
-            
-            if (typeof showToast === 'function') {
-                showToast('Ошибка загрузки приложения', 'error');
+            if (loadingScreen) {
+                loadingScreen.innerHTML = `
+                    <div style="text-align: center; color: white;">
+                        <h2 style="color: #ff6b6b;">Ошибка подключения</h2>
+                        <p>${error.message}</p>
+                        <p style="font-size: 14px; margin-top: 10px;">Проверьте подключение к интернету</p>
+                        <button onclick="location.reload()" style="
+                            background: white;
+                            color: #667eea;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            margin-top: 20px;
+                            cursor: pointer;
+                        ">
+                            Повторить попытку
+                        </button>
+                    </div>
+                `;
             }
         }
     }
     
-    async checkBackend() {
+    async loadDataFromServer() {
         try {
-            const response = await fetch(`${taskFlow.CONFIG.BACKEND_URL}/health`, {
-                method: 'GET',
-                signal: AbortSignal.timeout(3000)
-            });
+            ui.showLoading(true);
             
-            if (response.ok) {
-                const data = await response.json();
-                telegram.isBackendAvailable = data.status === 'ok';
-                console.log('Бэкенд доступен:', telegram.isBackendAvailable);
-            } else {
-                telegram.isBackendAvailable = false;
-            }
-        } catch (error) {
-            console.warn('Бэкенд недоступен, работаем оффлайн');
-            telegram.isBackendAvailable = false;
-        }
-    }
-    
-    async loadData() {
-        try {
-            // Загружаем из локального хранилища
-            const localData = taskFlow.loadFromStorage();
+            // Синхронизируем с сервером
+            const synced = await taskFlow.syncWithServer();
             
-            if (localData.tasks) {
-                taskFlow.allTasks = localData.tasks;
-                taskFlow.processTasks();
-                
-                console.log('📁 Загружено задач:', taskFlow.allTasks.length);
-                
-                // Если задач нет, создаем демо-задачу
-                if (taskFlow.allTasks.length === 0) {
-                    this.createDemoTask();
-                }
+            if (!synced) {
+                throw new Error('Не удалось загрузить данные с сервера');
             }
+            
+            // Обрабатываем задачи
+            taskFlow.processTasks();
+            
+            console.log('📁 Загружено задач с сервера:', taskFlow.allTasks.length);
+            console.log('📁 Архивных задач:', taskFlow.archivedTasks.length);
             
         } catch (error) {
             console.error('Ошибка загрузки данных:', error);
-            this.createDemoTask();
+            throw error;
+        } finally {
+            ui.showLoading(false);
         }
-    }
-    
-    createDemoTask() {
-        const now = new Date();
-        
-        taskFlow.allTasks = [{
-            id: Date.now(),
-            user_id: taskFlow.userId,
-            text: 'Добро пожаловать в TaskFlow! Нажмите + чтобы добавить задачу',
-            category: 'personal',
-            priority: 'medium',
-            date: now.toISOString().split('T')[0],
-            time: '10:00',
-            completed: false,
-            created_at: now.toISOString()
-        }];
-        
-        taskFlow.saveToStorage();
-        console.log('📝 Создана демо-задача');
     }
     
     setupEventListeners() {
@@ -166,18 +150,14 @@ class TaskFlowApp {
             e.preventDefault();
             
             try {
-                // Показываем загрузку
                 document.getElementById('global-loading').style.display = 'flex';
                 
                 const formData = formManager.getFormData();
                 const result = await taskManager.createTask(formData);
                 
                 if (result.success) {
-                    // Закрываем модальное окно
                     ui.closeModal('task-modal');
                     formManager.resetForm();
-                    
-                    // Обновляем UI
                     this.updateUI();
                     
                     if (typeof showToast === 'function') {
@@ -247,7 +227,6 @@ class TaskFlowApp {
                 const action = e.currentTarget.dataset.action;
                 this.handleQuickAction(action);
                 
-                // Закрываем меню
                 if (fabMain) fabMain.classList.remove('rotate');
                 if (fabMenu) fabMenu.classList.remove('open');
             });
@@ -302,7 +281,6 @@ class TaskFlowApp {
     }
     
     updateUI() {
-        // Обновляем все страницы
         if (typeof taskManager !== 'undefined') {
             taskManager.updateTaskList();
         }
