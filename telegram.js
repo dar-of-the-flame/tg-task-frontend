@@ -104,3 +104,5 @@ class TelegramIntegration {
         }
     }
 }
+
+window.telegram = new TelegramIntegration();
