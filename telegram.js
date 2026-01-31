@@ -1,4 +1,4 @@
-// Telegram Web App интеграция
+// telegram.js
 class TelegramIntegration {
     constructor() {
         this.tg = window.Telegram?.WebApp || null;
@@ -8,117 +8,88 @@ class TelegramIntegration {
     
     init() {
         if (!this.tg) {
-            console.log('Telegram Web App не обнаружен, работаем в режиме браузера');
+            console.log('Браузерный режим');
             taskFlow.userId = `web_${Date.now()}`;
             return this.setupWebMode();
         }
         
         try {
-            // Инициализация Telegram Web App
-            this.tg.expand();
-            this.tg.enableClosingConfirmation();
+            // Важно: сначала ready(), потом expand()
             this.tg.ready();
+            this.tg.expand();
             
             // Получаем данные пользователя
             this.user = this.tg.initDataUnsafe?.user;
-            taskFlow.userId = this.user?.id || `tg_${Date.now()}`;
-            
-            // Настройка темы
-            if (this.tg.colorScheme === 'light') {
-                document.body.classList.remove('dark-theme');
-                document.body.classList.add('light-theme');
+            if (this.user?.id) {
+                taskFlow.userId = this.user.id;
+                console.log('Telegram user:', this.user);
+                
+                // Проверяем авторизацию
+                const initData = this.tg.initData;
+                if (initData) {
+                    console.log('User авторизован в Telegram');
+                }
+            } else {
+                taskFlow.userId = `tg_noauth_${Date.now()}`;
+                console.log('Telegram без авторизации');
             }
             
-            // Настройка кнопки "Назад"
-            this.setupBackButton();
-            
             this.isReady = true;
-            console.log('Telegram Web App инициализирован:', this.user);
-            
             return true;
         } catch (error) {
-            console.error('Ошибка инициализации Telegram:', error);
+            console.error('Ошибка Telegram:', error);
             return this.setupWebMode();
         }
     }
     
-    setupWebMode() {
-        taskFlow.userId = `web_${Date.now()}`;
-        console.log('Режим веб-браузера, User ID:', taskFlow.userId);
-        return true;
-    }
-    
-    setupBackButton() {
-        if (!this.tg) return;
-        
-        this.tg.BackButton.onClick(() => {
-            // Закрываем открытые модальные окна
-            const openModals = document.querySelectorAll('.modal[style*="display: flex"], .modal[style*="display: block"]');
-            if (openModals.length > 0) {
-                openModals.forEach(modal => modal.style.display = 'none');
-                this.tg.BackButton.hide();
-                return;
-            }
-            
-            // Закрываем панель фильтров
-            const filtersPanel = document.getElementById('filters-panel');
-            if (filtersPanel?.classList.contains('open')) {
-                filtersPanel.classList.remove('open');
-                this.tg.BackButton.hide();
-                return;
-            }
-            
-            // Закрываем FAB меню
-            const fabMenu = document.getElementById('fab-menu');
-            if (fabMenu?.classList.contains('open')) {
-                document.getElementById('fab-main')?.classList.remove('rotate');
-                fabMenu.classList.remove('open');
-                this.tg.BackButton.hide();
-                return;
-            }
-        });
-    }
-    
-    showBackButton() {
-        if (this.tg) {
-            this.tg.BackButton.show();
-        }
-    }
-    
-    hideBackButton() {
-        if (this.tg) {
-            this.tg.BackButton.hide();
-        }
-    }
-    
-    sendToBot(data) {
-        if (!this.tg || !this.user) return false;
+    async sendTaskToBackend(taskData) {
+        if (!this.isBackendAvailable) return false;
         
         try {
-            this.tg.sendData(JSON.stringify(data));
-            return true;
+            console.log('Отправка задачи на сервер:', taskData);
+            
+            const response = await fetch(`${taskFlow.CONFIG.BACKEND_URL}/api/new_task`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(taskData),
+                signal: AbortSignal.timeout(5000)
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('Сервер ответил:', result);
+                return true;
+            } else {
+                console.error('Ошибка сервера:', response.status);
+                return false;
+            }
         } catch (error) {
-            console.error('Ошибка отправки данных в бота:', error);
+            console.warn('Ошибка отправки:', error.message);
+            this.isBackendAvailable = false;
             return false;
         }
     }
     
-    showAlert(message) {
-        if (this.tg) {
-            this.tg.showAlert(message);
-        } else {
-            alert(message);
+    async checkBackend() {
+        try {
+            const response = await fetch(`${taskFlow.CONFIG.BACKEND_URL}/health`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(3000)
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                this.isBackendAvailable = data.status === 'ok';
+                console.log('Бэкенд доступен:', this.isBackendAvailable);
+            } else {
+                this.isBackendAvailable = false;
+            }
+        } catch (error) {
+            console.warn('Бэкенд недоступен:', error.message);
+            this.isBackendAvailable = false;
         }
-    }
-    
-    getTheme() {
-        if (this.tg) {
-            return this.tg.colorScheme;
-        }
-        return localStorage.getItem('theme') || 'dark';
+        return this.isBackendAvailable;
     }
 }
-
-// Создаем и экспортируем экземпляр
-const telegram = new TelegramIntegration();
-window.telegram = telegram;
