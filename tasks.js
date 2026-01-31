@@ -173,6 +173,12 @@ class TaskManager {
         `;
     }
     
+    // НОВЫЙ МЕТОД: Обновление списка задач
+    updateTaskList() {
+        const filteredTasks = this.filterTasks();
+        this.renderTasks(filteredTasks, 'tasks-list');
+    }
+    
     async toggleComplete(taskId) {
         const taskIndex = taskFlow.allTasks.findIndex(t => t.id == taskId);
         if (taskIndex === -1) return;
@@ -389,10 +395,6 @@ class TaskManager {
         
         return true;
     }
-    // Добавьте в конец класса TaskManager перед закрывающей скобкой:
-updateTaskList() {
-    this.updateAllTaskLists();
-}
 }
 
 // Создаем и экспортируем экземпляр
