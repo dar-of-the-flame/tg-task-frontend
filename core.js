@@ -1,4 +1,4 @@
-// core.js - основной модуль TaskFlow (только онлайн)
+// core.js - основной модуль TaskFlow
 const taskFlow = {
     CONFIG: {
         BACKEND_URL: 'https://tg-task-bot-service.onrender.com',
@@ -40,7 +40,7 @@ const taskFlow = {
         return {};
     },
     
-    // Сохранение в локальное хранилище (только кэш)
+    // Сохранение в локальное хранилища (только кэш)
     saveToStorage() {
         try {
             const data = {
@@ -59,7 +59,7 @@ const taskFlow = {
     // Обработка задач
     processTasks() {
         const now = new Date();
-        const today = now.toISOString().split('T')[0];
+        const today = this.formatDateForInput(now);
         
         // Находим выполненные и удалённые задачи
         const completedTasks = this.allTasks.filter(task => task.completed && !task.deleted);
@@ -74,7 +74,7 @@ const taskFlow = {
         
         // Удаляем из активных
         this.allTasks = this.allTasks.filter(task => 
-            !task.completed && !task.deleted
+            !task.completed && !task.deleted && !task.archived
         );
         
         // Очищаем старые архивные задачи (старше 30 дней)
@@ -91,17 +91,32 @@ const taskFlow = {
         
         // Помечаем просроченные задачи
         this.allTasks.forEach(task => {
-            if (task.date && task.date < today && !task.completed) {
-                task.overdue = true;
+            if (task.date) {
+                let taskDate = task.date;
+                if (taskDate.includes('T')) {
+                    taskDate = taskDate.split('T')[0];
+                }
+                task.overdue = taskDate < today && !task.completed;
             } else {
                 task.overdue = false;
             }
         });
         
+        // Архивируем просроченные напоминания
+        this.allTasks.forEach(task => {
+            if (task.is_reminder && task.overdue) {
+                task.archived = true;
+                this.archivedTasks.push({...task});
+            }
+        });
+        
+        // Убираем заархивированные из активных
+        this.allTasks = this.allTasks.filter(task => !task.archived);
+        
         this.saveToStorage();
     },
     
-    // Синхронизация с сервером (ОСНОВНОЙ МЕТОД)
+    // Синхронизация с сервером
     async syncWithServer() {
         if (!this.userId) {
             throw new Error('Нет User ID для синхронизации');
@@ -110,11 +125,11 @@ const taskFlow = {
         try {
             console.log('🔄 Синхронизация с сервером...');
             
-            // 1. Загружаем задачи с сервера
+            // Загружаем задачи с сервера
             const response = await fetch(
                 `${this.CONFIG.BACKEND_URL}/api/tasks?user_id=${this.userId}`,
                 { 
-                    signal: AbortSignal.timeout(15000) // 15 секунд таймаут
+                    signal: AbortSignal.timeout(15000)
                 }
             );
             
@@ -254,16 +269,32 @@ const taskFlow = {
         if (!dateString) return 'Без даты';
         
         try {
-            const date = new Date(dateString);
+            // Если дата содержит время, берем только дату
+            let dateStr = dateString;
+            if (dateStr.includes('T')) {
+                dateStr = dateStr.split('T')[0];
+            }
+            
+            const dateParts = dateStr.split('-');
+            if (dateParts.length !== 3) return dateStr;
+            
+            const year = parseInt(dateParts[0]);
+            const month = parseInt(dateParts[1]) - 1;
+            const day = parseInt(dateParts[2]);
+            
+            const date = new Date(year, month, day);
             const today = new Date();
             const tomorrow = new Date(today);
             tomorrow.setDate(tomorrow.getDate() + 1);
             
-            // Проверяем сегодня/завтра
-            if (date.toDateString() === today.toDateString()) {
+            // Приводим к одному формату для сравнения
+            const todayFormatted = this.formatDateForInput(today);
+            const tomorrowFormatted = this.formatDateForInput(tomorrow);
+            
+            if (dateStr === todayFormatted) {
                 return 'Сегодня';
             }
-            if (date.toDateString() === tomorrow.toDateString()) {
+            if (dateStr === tomorrowFormatted) {
                 return 'Завтра';
             }
             
@@ -274,8 +305,19 @@ const taskFlow = {
                 month: 'short'
             });
         } catch (e) {
+            console.error('Ошибка форматирования даты:', e);
             return dateString;
         }
+    },
+    
+    // Форматирование даты для input[type="date"]
+    formatDateForInput(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     },
     
     // Получение имени категории
@@ -312,9 +354,14 @@ const taskFlow = {
     
     // Получение задач для определённой даты
     getTasksForDate(date) {
-        return this.allTasks.filter(task => 
-            task.date === date && !task.completed && !task.archived
-        );
+        return this.allTasks.filter(task => {
+            if (!task.date) return false;
+            let taskDate = task.date;
+            if (taskDate.includes('T')) {
+                taskDate = taskDate.split('T')[0];
+            }
+            return taskDate === date && !task.completed && !task.archived;
+        });
     },
     
     // Получение активных задач
