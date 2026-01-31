@@ -389,6 +389,10 @@ class TaskManager {
         
         return true;
     }
+    // Добавьте в конец класса TaskManager перед закрывающей скобкой:
+updateTaskList() {
+    this.updateAllTaskLists();
+}
 }
 
 // Создаем и экспортируем экземпляр
