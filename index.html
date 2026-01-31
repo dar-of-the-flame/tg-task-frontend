@@ -42,18 +42,18 @@
 </head>
 <body class="dark-theme">
     <!-- Загрузочный экран -->
-<div class="loading-screen" id="loading-screen">
-    <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <h2>TaskFlow</h2>
-        <p>Загрузка приложения...</p>
-        <div class="loading-details" style="margin-top: 20px; font-size: 12px; opacity: 0.7;">
-            <div>🤖 Подключение к боту...</div>
-            <div>🌐 Проверка сервера...</div>
-            <div>📁 Загрузка данных...</div>
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h2>TaskFlow</h2>
+            <p>Загрузка приложения...</p>
+            <div class="loading-details" style="margin-top: 20px; font-size: 12px; opacity: 0.7;">
+                <div>🤖 Подключение к боту...</div>
+                <div>🌐 Проверка сервера...</div>
+                <div>📁 Загрузка данных...</div>
+            </div>
         </div>
     </div>
-</div>
 
     <!-- Основной контейнер -->
     <div class="app-container" style="display: none;">
@@ -114,6 +114,9 @@
                     <i class="fas fa-clipboard-list"></i>
                     <h3>Нет задач</h3>
                     <p>Нажмите на плюсик, чтобы добавить первую задачу</p>
+                    <button class="btn btn-primary" onclick="openTaskForm()">
+                        <i class="fas fa-plus"></i> Создать задачу
+                    </button>
                 </div>
             </div>
 
@@ -260,6 +263,14 @@
                         <div class="chart-box">
                             <canvas id="weekdayChart"></canvas>
                         </div>
+                    </div>
+                </div>
+
+                <!-- Список активных задач -->
+                <div class="stats-tasks-container">
+                    <h4><i class="fas fa-list-ol"></i> Активные задачи</h4>
+                    <div id="stats-tasks-list" style="max-height: 300px; overflow-y: auto; margin-top: 15px;">
+                        <!-- Активные задачи загружаются динамически -->
                     </div>
                 </div>
 
@@ -412,92 +423,92 @@
         </div>
 
         <!-- Модалка задачи -->
-<div class="modal" id="task-modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-plus-circle"></i> Новая задача</h3>
-            <button class="close-modal">&times;</button>
+        <div class="modal" id="task-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-plus-circle"></i> Новая задача</h3>
+                    <button class="close-modal">&times;</button>
+                </div>
+                
+                <form id="task-form">
+                    <!-- Выбор типа -->
+                    <div class="task-type-tabs">
+                        <button type="button" class="type-tab active" data-type="task">Задача</button>
+                        <button type="button" class="type-tab" data-type="reminder">Напоминание</button>
+                        <button type="button" class="type-tab" data-type="note">Заметка</button>
+                    </div>
+
+                    <!-- Категории -->
+                    <div class="form-group">
+                        <label>Категория:</label>
+                        <div class="category-tags">
+                            <button type="button" class="category-tag active" data-category="personal">
+                                <i class="fas fa-user"></i> Личное
+                            </button>
+                            <button type="button" class="category-tag" data-category="work">
+                                <i class="fas fa-briefcase"></i> Работа
+                            </button>
+                            <button type="button" class="category-tag" data-category="health">
+                                <i class="fas fa-heart"></i> Здоровье
+                            </button>
+                            <button type="button" class="category-tag" data-category="study">
+                                <i class="fas fa-graduation-cap"></i> Учёба
+                            </button>
+                        </div>
+                        <input type="hidden" id="task-category" value="personal">
+                    </div>
+
+                    <!-- Текст задачи -->
+                    <div class="form-group">
+                        <label for="task-text">Что нужно сделать?</label>
+                        <textarea 
+                            id="task-text" 
+                            placeholder="Например: Сделать тренировку, прочитать главу книги..." 
+                            rows="3"
+                            required></textarea>
+                    </div>
+
+                    <!-- Дата и время (только для задач и напоминаний) -->
+                    <div class="form-group" id="datetime-group">
+                        <label>Когда?</label>
+                        <div class="datetime-inputs">
+                            <div class="date-input">
+                                <input type="date" id="task-date" required>
+                            </div>
+                            <div class="time-input">
+                                <input type="time" id="task-time" required>
+                                <button type="button" class="btn-small" id="set-now-btn">Сейчас</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Приоритет (только для задач) -->
+                    <div class="form-group" id="priority-group">
+                        <label>Приоритет:</label>
+                        <div class="priority-buttons">
+                            <button type="button" class="priority-btn active" data-priority="medium">
+                                <i class="fas fa-minus"></i> Средний
+                            </button>
+                            <button type="button" class="priority-btn" data-priority="high">
+                                <i class="fas fa-arrow-up"></i> Высокий
+                            </button>
+                            <button type="button" class="priority-btn" data-priority="low">
+                                <i class="fas fa-arrow-down"></i> Низкий
+                            </button>
+                        </div>
+                        <input type="hidden" id="task-priority" value="medium">
+                    </div>
+
+                    <!-- Кнопки -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary close-modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary" id="save-task-btn">
+                            <i class="fas fa-save"></i> Сохранить
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
-        
-        <form id="task-form">
-            <!-- Выбор типа -->
-            <div class="task-type-tabs">
-                <button type="button" class="type-tab active" data-type="task">Задача</button>
-                <button type="button" class="type-tab" data-type="reminder">Напоминание</button>
-                <button type="button" class="type-tab" data-type="note">Заметка</button>
-            </div>
-
-            <!-- Категории -->
-            <div class="form-group">
-                <label>Категория:</label>
-                <div class="category-tags">
-                    <button type="button" class="category-tag active" data-category="personal">
-                        <i class="fas fa-user"></i> Личное
-                    </button>
-                    <button type="button" class="category-tag" data-category="work">
-                        <i class="fas fa-briefcase"></i> Работа
-                    </button>
-                    <button type="button" class="category-tag" data-category="health">
-                        <i class="fas fa-heart"></i> Здоровье
-                    </button>
-                    <button type="button" class="category-tag" data-category="study">
-                        <i class="fas fa-graduation-cap"></i> Учёба
-                    </button>
-                </div>
-                <input type="hidden" id="task-category" value="personal">
-            </div>
-
-            <!-- Текст задачи -->
-            <div class="form-group">
-                <label for="task-text">Что нужно сделать?</label>
-                <textarea 
-                    id="task-text" 
-                    placeholder="Например: Сделать тренировку, прочитать главу книги..." 
-                    rows="3"
-                    required></textarea>
-            </div>
-
-            <!-- Дата и время (только для задач и напоминаний) -->
-            <div class="form-group" id="datetime-group">
-                <label>Когда?</label>
-                <div class="datetime-inputs">
-                    <div class="date-input">
-                        <input type="date" id="task-date" required>
-                    </div>
-                    <div class="time-input">
-                        <input type="time" id="task-time" required>
-                        <button type="button" class="btn-small" id="set-now-btn">Сейчас</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Приоритет (только для задач) -->
-            <div class="form-group" id="priority-group">
-                <label>Приоритет:</label>
-                <div class="priority-buttons">
-                    <button type="button" class="priority-btn active" data-priority="medium">
-                        <i class="fas fa-minus"></i> Средний
-                    </button>
-                    <button type="button" class="priority-btn" data-priority="high">
-                        <i class="fas fa-arrow-up"></i> Высокий
-                    </button>
-                    <button type="button" class="priority-btn" data-priority="low">
-                        <i class="fas fa-arrow-down"></i> Низкий
-                    </button>
-                </div>
-                <input type="hidden" id="task-priority" value="medium">
-            </div>
-
-            <!-- Кнопки -->
-            <div class="form-actions">
-                <button type="button" class="btn btn-secondary close-modal">Отмена</button>
-                <button type="submit" class="btn btn-primary" id="save-task-btn">
-                    <i class="fas fa-save"></i> Сохранить
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
 
         <!-- Быстрая заметка (для календаря) -->
         <div class="modal" id="quick-note-modal">
@@ -555,10 +566,7 @@
 
         <!-- Toast уведомления -->
         <div class="toast-container" id="toast-container">
-            <div class="toast success">
-                <i class="fas fa-check-circle"></i>
-                <span class="toast-message">Задача сохранена!</span>
-            </div>
+            <!-- Toast уведомления добавляются динамически -->
         </div>
 
         <!-- Модалка загрузки -->
@@ -571,14 +579,14 @@
     </div>
 
     <script src="core.js"></script>
-<script src="telegram.js"></script>
-<script src="ui.js"></script>
-<script src="form.js"></script>
-<script src="tasks.js"></script>
-<script src="calendar.js"></script>
-<script src="archive.js"></script>
-<script src="stats.js"></script>
-<script src="app.js"></script>
+    <script src="telegram.js"></script>
+    <script src="ui.js"></script>
+    <script src="form.js"></script>
+    <script src="tasks.js"></script>
+    <script src="calendar.js"></script>
+    <script src="archive.js"></script>
+    <script src="stats.js"></script>
+    <script src="app.js"></script>
 
 </body>
 </html>
