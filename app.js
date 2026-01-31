@@ -2,145 +2,223 @@
 class TaskFlowApp {
     constructor() {
         this.isInitialized = false;
+        this.maxRetries = 3;
+        this.retryCount = 0;
     }
     
     async init() {
         try {
             console.log('🚀 Инициализация TaskFlow...');
             
-            // 1. Инициализация Telegram
-            await telegram.init();
+            // 1. Показываем загрузочный экран
+            this.showLoadingMessage('Проверка подключения...');
             
-            // 2. Устанавливаем userId для синхронизации
-            if (telegram.user?.id) {
-                taskFlow.userId = telegram.user.id;
-            } else {
-                // В веб-режиме используем случайный ID
-                taskFlow.userId = `web_${Date.now()}`;
+            // 2. Инициализация Telegram
+            const telegramInit = await telegram.init();
+            if (!telegramInit) {
+                throw new Error('Не удалось инициализировать Telegram');
             }
             
-            console.log('👤 User ID:', taskFlow.userId);
+            // 3. Устанавливаем userId
+            if (telegram.user?.id) {
+                taskFlow.userId = telegram.user.id;
+                console.log('👤 Telegram User ID:', taskFlow.userId);
+            } else {
+                // Если нет Telegram авторизации, используем WebApp данные
+                if (window.Telegram?.WebApp?.initDataUnsafe?.user?.id) {
+                    taskFlow.userId = window.Telegram.WebApp.initDataUnsafe.user.id;
+                    console.log('👤 WebApp User ID:', taskFlow.userId);
+                } else {
+                    // В браузерном режиме не работаем
+                    throw new Error('Требуется авторизация в Telegram. Откройте приложение через бота.');
+                }
+            }
             
-            // 3. Проверяем бэкенд
-            await this.checkBackend();
+            // 4. Проверяем бэкенд
+            this.showLoadingMessage('Проверка сервера...');
+            const backendAvailable = await this.checkBackend();
             
-            // 4. Загружаем данные (локальные + с сервера)
+            if (!backendAvailable) {
+                throw new Error('Сервер недоступен. Проверьте подключение к интернету и попробуйте снова.');
+            }
+            
+            // 5. Загружаем данные с сервера
+            this.showLoadingMessage('Загрузка данных...');
             await this.loadData();
             
-            // 5. Инициализация UI
+            // 6. Инициализация UI
             ui.initTheme();
             ui.updateCurrentDate();
             formManager.init();
             
-            // 6. Инициализация модулей
+            // 7. Инициализация модулей
             calendarManager.init();
             statsManager.initCharts();
             
-            // 7. Настройка обработчиков
+            // 8. Настройка обработчиков
             this.setupEventListeners();
             
-            // 8. Первоначальный рендеринг
+            // 9. Первоначальный рендеринг
             this.updateUI();
             
-            // 9. Скрываем загрузочный экран
+            // 10. Скрываем загрузочный экран
             setTimeout(() => {
-                const loadingScreen = document.getElementById('loading-screen');
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
-                document.querySelector('.app-container').style.display = 'flex';
-            }, 500);
+                this.hideLoadingScreen();
+                console.log('✅ TaskFlow инициализирован!');
+                
+                // Показываем приветственное сообщение
+                setTimeout(() => {
+                    if (typeof showToast === 'function') {
+                        showToast('TaskFlow готов к работе!', 'success');
+                    }
+                }, 500);
+                
+            }, 1000);
             
             this.isInitialized = true;
-            console.log('✅ TaskFlow инициализирован!');
-            
-            // Показываем приветственное сообщение
-            setTimeout(() => {
-                if (typeof showToast === 'function') {
-                    showToast('TaskFlow готов к работе!', 'success');
-                }
-            }, 1000);
             
         } catch (error) {
             console.error('❌ Ошибка инициализации:', error);
-            
-            // Все равно показываем интерфейс
-            const loadingScreen = document.getElementById('loading-screen');
-            if (loadingScreen) {
-                loadingScreen.style.display = 'none';
-            }
-            document.querySelector('.app-container').style.display = 'flex';
-            
-            // Показываем сообщение об ошибке
-            if (typeof showToast === 'function') {
-                showToast('Приложение загружено в оффлайн-режиме', 'warning');
-            }
+            this.showError(error.message);
         }
     }
     
     async checkBackend() {
         try {
-            const isConnected = await taskFlow.checkBackendConnection();
-            if (isConnected) {
-                console.log('✅ Соединение с бэкендом установлено');
+            console.log('🌐 Проверка соединения с бэкендом...');
+            
+            const response = await fetch(`${taskFlow.CONFIG.BACKEND_URL}/health`, {
+                method: 'GET',
+                signal: AbortSignal.timeout(10000) // 10 секунд таймаут
+            });
+            
+            if (response.ok) {
                 telegram.isBackendAvailable = true;
+                console.log('✅ Бэкенд доступен');
+                return true;
             } else {
-                console.log('⚠️ Бэкенд недоступен, работаем в оффлайн-режиме');
-                telegram.isBackendAvailable = false;
+                console.log('❌ Бэкенд не отвечает');
+                return false;
             }
+            
         } catch (error) {
-            console.warn('⚠️ Ошибка проверки бэкенда:', error);
+            console.warn('⚠️ Ошибка проверки бэкенда:', error.message);
+            
+            // Пробуем переподключиться
+            if (this.retryCount < this.maxRetries) {
+                this.retryCount++;
+                console.log(`🔄 Попытка переподключения ${this.retryCount}/${this.maxRetries}...`);
+                
+                this.showLoadingMessage(`Переподключение... (${this.retryCount}/${this.maxRetries})`);
+                
+                // Ждем 2 секунды перед следующей попыткой
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                return await this.checkBackend();
+            }
+            
             telegram.isBackendAvailable = false;
+            return false;
         }
     }
     
     async loadData() {
         try {
-            console.log('📁 Загрузка данных...');
+            console.log('📁 Загрузка данных с сервера...');
             
-            // Пытаемся синхронизировать с сервером
-            if (telegram.isBackendAvailable) {
-                await taskFlow.syncWithServer();
-            } else {
-                // Загружаем только локальные данные
-                taskFlow.loadFromStorage();
-                taskFlow.processTasks();
+            if (!telegram.isBackendAvailable) {
+                throw new Error('Нет подключения к серверу');
+            }
+            
+            if (!taskFlow.userId) {
+                throw new Error('Не указан User ID');
+            }
+            
+            // Синхронизируем с сервером
+            const synced = await taskFlow.syncWithServer();
+            
+            if (!synced) {
+                throw new Error('Не удалось загрузить данные с сервера');
             }
             
             console.log(`📊 Загружено: ${taskFlow.allTasks.length} активных задач`);
             console.log(`📊 Загружено: ${taskFlow.archivedTasks.length} архивных задач`);
             
-            // Если задач нет, создаем демо-задачу
-            if (taskFlow.allTasks.length === 0) {
-                this.createDemoTask();
-            }
-            
         } catch (error) {
             console.error('❌ Ошибка загрузки данных:', error);
-            this.createDemoTask();
+            throw error;
         }
     }
     
-    createDemoTask() {
-        const now = new Date();
-        
-        taskFlow.allTasks = [{
-            id: taskFlow.generateTaskId(),
-            user_id: taskFlow.userId,
-            text: 'Добро пожаловать в TaskFlow! 👋',
-            category: 'personal',
-            priority: 'medium',
-            date: now.toISOString().split('T')[0],
-            time: '12:00',
-            reminder: 0,
-            emoji: '🎯',
-            completed: false,
-            deleted: false,
-            created_at: now.toISOString()
-        }];
-        
-        taskFlow.saveToStorage();
-        console.log('📝 Создана демо-задача');
+    showLoadingMessage(message) {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            const messageElement = loadingScreen.querySelector('p');
+            if (messageElement) {
+                messageElement.textContent = message;
+            }
+        }
+    }
+    
+    hideLoadingScreen() {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        }
+        document.querySelector('.app-container').style.display = 'flex';
+    }
+    
+    showError(message) {
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.innerHTML = `
+                <div style="text-align: center; color: white; max-width: 90%;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 64px; margin-bottom: 20px; color: #ff6b6b;"></i>
+                    <h2 style="color: #ff6b6b; margin-bottom: 15px;">Ошибка запуска</h2>
+                    <p style="margin-bottom: 25px; line-height: 1.5;">${message}</p>
+                    <div style="display: flex; gap: 10px; justify-content: center;">
+                        <button onclick="location.reload()" style="
+                            background: white;
+                            color: #667eea;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            min-width: 120px;
+                        ">
+                            <i class="fas fa-redo"></i> Перезагрузить
+                        </button>
+                        <button onclick="taskFlowApp.openTelegramBot()" style="
+                            background: #667eea;
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 8px;
+                            font-weight: 600;
+                            cursor: pointer;
+                            min-width: 120px;
+                        ">
+                            <i class="fab fa-telegram"></i> Открыть бота
+                        </button>
+                    </div>
+                    <p style="margin-top: 20px; font-size: 12px; opacity: 0.8;">
+                        Если проблема повторяется, проверьте:<br>
+                        1. Подключение к интернету<br>
+                        2. Что бот доступен: @RSplanersisBot<br>
+                        3. Сервер работает: https://tg-task-bot-service.onrender.com
+                    </p>
+                </div>
+            `;
+        }
+    }
+    
+    openTelegramBot() {
+        // Пытаемся открыть Telegram бота
+        if (window.Telegram?.WebApp) {
+            window.Telegram.WebApp.openTelegramLink('https://t.me/RSplanersisBot');
+        } else {
+            window.open('https://t.me/RSplanersisBot', '_blank');
+        }
     }
     
     setupEventListeners() {
@@ -189,33 +267,21 @@ class TaskFlowApp {
                 ui.showLoading(true);
                 
                 // Получаем данные формы
-                const text = document.getElementById('task-text').value.trim();
-                const category = document.getElementById('task-category').value;
-                const priority = document.getElementById('task-priority').value;
-                const date = document.getElementById('task-date').value;
-                const time = document.getElementById('task-time').value;
-                const reminder = parseInt(document.getElementById('task-reminder').value) || 0;
+                const formData = formManager.getFormData();
                 
-                if (!text) {
-                    throw new Error('Введите текст задачи');
-                }
+                // Добавляем user_id
+                formData.user_id = taskFlow.userId;
                 
                 // Создаем задачу
-                const taskData = {
-                    text,
-                    category,
-                    priority,
-                    date,
-                    time,
-                    reminder
-                };
-                
-                const result = await taskManager.createTask(taskData);
+                const result = await taskManager.createTask(formData);
                 
                 if (result.success) {
                     // Закрываем форму
                     ui.closeModal('task-modal');
                     formManager.resetForm();
+                    
+                    // Обновляем UI
+                    this.updateUI();
                     
                     // Показываем уведомление
                     showToast('Задача сохранена!', 'success');
@@ -361,6 +427,12 @@ class TaskFlowApp {
     
     // Открытие формы задачи
     openTaskForm(options = {}) {
+        // Проверяем подключение
+        if (!telegram.isBackendAvailable) {
+            showToast('Нет подключения к серверу. Задачи не будут сохранены.', 'error');
+            return;
+        }
+        
         // Сбрасываем форму
         const form = document.getElementById('task-form');
         if (form) form.reset();
@@ -459,8 +531,8 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('- User ID:', taskFlow.userId);
         console.log('- Tasks:', taskFlow.allTasks.length);
         console.log('- Archived:', taskFlow.archivedTasks.length);
-        console.log('- Current Page:', taskFlow.currentPage);
         console.log('- Telegram User:', telegram.user);
         console.log('- Backend Available:', telegram.isBackendAvailable);
+        console.log('- WebApp:', window.Telegram?.WebApp);
     };
 });
