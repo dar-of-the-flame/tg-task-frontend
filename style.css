@@ -1525,3 +1525,302 @@ html {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--border-light);
 }
+
+/* Исправления для календаря */
+.calendar-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+}
+
+.calendar-controls h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+#today-btn {
+    padding: 8px 16px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+#today-btn:hover {
+    opacity: 0.9;
+}
+
+/* Исправления для дней календаря */
+.calendar-day {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    padding: 8px;
+}
+
+.calendar-day:hover {
+    background: var(--bg-tertiary);
+}
+
+.calendar-day.today {
+    background: var(--primary);
+    color: white;
+    font-weight: bold;
+}
+
+.calendar-day.selected {
+    border: 2px solid var(--primary);
+}
+
+.calendar-day.has-tasks .day-dot {
+    position: absolute;
+    bottom: 5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
+.calendar-day.today.has-tasks .day-dot {
+    background: white;
+}
+
+.day-number {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+/* Исправления для формы */
+.datetime-inputs {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.date-input,
+.time-input {
+    flex: 1;
+}
+
+.time-input {
+    display: flex;
+    gap: 8px;
+}
+
+#set-now-btn {
+    padding: 10px 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+#set-now-btn:hover {
+    background: var(--border);
+}
+
+/* Приоритетные кнопки */
+.priority-btn {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid var(--border);
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+
+.priority-btn.active {
+    color: white;
+    border-color: transparent;
+}
+
+.priority-btn[data-priority="high"].active {
+    background: #ef4444;
+}
+
+.priority-btn[data-priority="medium"].active {
+    background: #f59e0b;
+}
+
+.priority-btn[data-priority="low"].active {
+    background: #10b981;
+}
+
+/* Категории */
+.category-tag {
+    padding: 10px 15px;
+    border: 2px solid var(--border);
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.category-tag.active {
+    background: #3b82f6;
+    color: white;
+    border-color: transparent;
+}
+
+/* Стрелочки в выпадающих списках */
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 16px;
+    padding-right: 40px;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.light-theme select {
+    background-color: white;
+}
+
+/* Задачи на день */
+.day-tasks {
+    margin-top: 20px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    padding: 20px;
+}
+
+.day-tasks h4 {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-primary);
+}
+
+.day-task {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    transition: background 0.2s;
+}
+
+.day-task:hover {
+    background: var(--border);
+}
+
+.day-task-content {
+    flex: 1;
+}
+
+.day-task-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.day-task-time {
+    font-size: 12px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Загрузочный экран */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    color: white;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Адаптивность для формы */
+@media (max-width: 480px) {
+    .datetime-inputs {
+        flex-direction: column;
+    }
+    
+    .priority-buttons {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .category-tags {
+        flex-wrap: wrap;
+    }
+    
+    .category-tag {
+        flex: 1;
+        min-width: 45%;
+        justify-content: center;
+    }
+}
+
+/* Отсутствие задач */
+.empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-secondary);
+}
+
+.empty-state i {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.empty-state p {
+    margin-bottom: 16px;
+}
