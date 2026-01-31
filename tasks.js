@@ -1,24 +1,29 @@
+// Модуль работы с задачами
 class TaskManager {
     constructor() {
         this.tasks = taskFlow.allTasks;
         this.archived = taskFlow.archivedTasks;
     }
     
+    // Фильтрация задач
     filterTasks() {
         let filteredTasks = [...this.tasks];
         
+        // Фильтр по категориям
         if (taskFlow.activeFilters.categories.length > 0) {
             filteredTasks = filteredTasks.filter(task => 
                 taskFlow.activeFilters.categories.includes(task.category)
             );
         }
         
+        // Фильтр по приоритетам
         if (taskFlow.activeFilters.priorities.length > 0) {
             filteredTasks = filteredTasks.filter(task => 
                 taskFlow.activeFilters.priorities.includes(task.priority)
             );
         }
         
+        // Фильтр по статусу
         if (taskFlow.activeFilters.status.includes('active')) {
             filteredTasks = filteredTasks.filter(task => !task.completed);
         }
@@ -32,18 +37,18 @@ class TaskManager {
             );
         }
         
+        // Быстрые фильтры
         const today = new Date().toISOString().split('T')[0];
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
         
         switch (taskFlow.currentFilter) {
             case 'today':
                 filteredTasks = filteredTasks.filter(task => task.date === today);
                 break;
             case 'tomorrow':
-                filteredTasks = filteredTasks.filter(task => 
-                    task.date === tomorrow.toISOString().split('T')[0]
-                );
+                filteredTasks = filteredTasks.filter(task => task.date === tomorrowStr);
                 break;
             case 'week':
                 const weekEnd = new Date();
@@ -73,6 +78,7 @@ class TaskManager {
             return;
         }
         
+        // Всегда скрываем пустое состояние сначала
         if (emptyState) {
             emptyState.style.display = 'none';
         }
@@ -85,17 +91,21 @@ class TaskManager {
             return;
         }
         
+        // Сортируем задачи по дате и приоритету
         const sortedTasks = [...tasks].sort((a, b) => {
+            // Сначала невыполненные
             if (a.completed !== b.completed) {
                 return a.completed ? 1 : -1;
             }
             
+            // По дате
             const dateA = new Date(a.date || '9999-12-31');
             const dateB = new Date(b.date || '9999-12-31');
             if (dateA.getTime() !== dateB.getTime()) {
                 return dateA - dateB;
             }
             
+            // По приоритету
             const priorityOrder = { high: 3, medium: 2, low: 1 };
             return (priorityOrder[b.priority] || 1) - (priorityOrder[a.priority] || 1);
         });
@@ -139,35 +149,38 @@ class TaskManager {
         if (taskIndex === -1) return;
         
         const task = taskFlow.allTasks[taskIndex];
-        task.completed = !task.completed;
+        const newCompletedState = !task.completed;
         
-        if (task.completed) {
-            task.completed_at = new Date().toISOString();
-        } else {
-            task.completed_at = null;
-        }
+        // Обновляем локально
+        task.completed = newCompletedState;
+        task.completed_at = newCompletedState ? new Date().toISOString() : null;
         
+        // Обновляем на сервере
         if (telegram.isBackendAvailable) {
-            await telegram.sendTaskToBackend(task);
+            await taskFlow.updateTaskOnServer(taskId, { completed: newCompletedState });
         }
         
         taskFlow.processTasks();
         this.updateTaskList();
         
-        const message = task.completed ? 'Задача выполнена!' : 'Задача возвращена в работу';
+        // Показываем уведомление
+        const message = newCompletedState ? 'Задача выполнена!' : 'Задача возвращена в работу';
         if (typeof showToast === 'function') {
             showToast(message, 'success');
         }
     }
     
+    // Создание новой задачи
     async createTask(taskData) {
         try {
+            // Валидация
             if (!taskData.text || !taskData.text.trim()) {
                 throw new Error('Введите текст задачи');
             }
             
+            // Формируем объект задачи
             const task = {
-                id: Date.now(),
+                id: taskFlow.generateTaskId(),
                 user_id: taskFlow.userId,
                 text: taskData.text.trim(),
                 category: taskData.category || 'personal',
@@ -175,102 +188,92 @@ class TaskManager {
                 date: taskData.date,
                 time: taskData.time || '',
                 reminder: taskData.reminder || 0,
+                emoji: taskData.emoji || '📝',
                 completed: false,
                 deleted: false,
                 created_at: new Date().toISOString()
             };
             
-            const backendSaved = await telegram.sendTaskToBackend(task);
+            // Пытаемся сохранить на сервер
+            const backendSaved = await taskFlow.saveTaskToServer(task);
             
             if (backendSaved) {
-                console.log('Задача сохранена на сервере');
+                console.log('✅ Задача сохранена на сервере');
+            } else {
+                console.log('⚠️ Задача сохранена локально');
             }
             
+            // Добавляем в локальный список
             taskFlow.allTasks.unshift(task);
             taskFlow.processTasks();
             taskFlow.saveToStorage();
             
-            if (telegram.user) {
-                telegram.sendToBot({
-                    action: 'task_created',
-                    task_id: task.id,
-                    task_text: task.text
-                });
+            // Обновляем UI
+            this.updateTaskList();
+            
+            // Обновляем календарь
+            if (typeof calendarManager !== 'undefined') {
+                calendarManager.renderCalendar();
             }
             
             return { success: true, task };
             
         } catch (error) {
-            console.error('Ошибка создания задачи:', error);
+            console.error('❌ Ошибка создания задачи:', error);
             return { success: false, error: error.message };
         }
     }
     
-    completeTask(taskId) {
-        const task = taskFlow.allTasks.find(t => t.id == taskId);
-        if (task) {
-            task.completed = true;
-            task.completed_at = new Date().toISOString();
-            taskFlow.processTasks();
-            
-            this.updateTaskList();
-            
-            if (typeof showToast === 'function') {
-                showToast('Задача выполнена!', 'success');
-            }
-            
-            if (telegram.user) {
-                telegram.sendToBot({
-                    action: 'task_completed',
-                    task_id: task.id,
-                    task_text: task.text
-                });
-            }
-            
-            return true;
-        }
-        return false;
-    }
-    
-    deleteTask(taskId) {
+    // Удаление задачи
+    async deleteTask(taskId) {
         if (!confirm('Удалить эту задачу?')) return false;
         
         const taskIndex = taskFlow.allTasks.findIndex(t => t.id == taskId);
-        if (taskIndex !== -1) {
-            const task = taskFlow.allTasks[taskIndex];
-            task.deleted = true;
-            task.deleted_at = new Date().toISOString();
-            taskFlow.processTasks();
-            
-            this.updateTaskList();
-            
-            if (typeof showToast === 'function') {
-                showToast('Задача удалена', 'warning');
-            }
-            
-            return true;
+        if (taskIndex === -1) return false;
+        
+        const task = taskFlow.allTasks[taskIndex];
+        
+        // Обновляем локально
+        task.deleted = true;
+        task.deleted_at = new Date().toISOString();
+        
+        // Обновляем на сервере
+        if (telegram.isBackendAvailable) {
+            await taskFlow.updateTaskOnServer(taskId, { deleted: true });
         }
-        return false;
+        
+        taskFlow.processTasks();
+        this.updateTaskList();
+        
+        // Уведомление
+        if (typeof showToast === 'function') {
+            showToast('Задача удалена', 'warning');
+        }
+        
+        return true;
     }
     
+    // Обновление списка задач в UI
     updateTaskList() {
         const filteredTasks = this.filterTasks();
         this.renderTasks(filteredTasks);
         
+        // Обновляем счетчики
         this.updateCounters();
     }
     
+    // Обновление счетчиков задач
     updateCounters() {
         const activeCount = taskFlow.allTasks.length;
         const completedCount = taskFlow.archivedTasks.filter(t => t.completed).length;
         
-        const activeElement = document.getElementById('active-tasks');
-        const completedElement = document.getElementById('completed-tasks');
-        
-        if (activeElement) activeElement.textContent = activeCount;
-        if (completedElement) completedElement.textContent = completedCount;
+        // Обновляем элементы на странице статистики
+        if (typeof statsManager !== 'undefined') {
+            statsManager.updateStats();
+        }
     }
     
+    // Применение фильтров
     applyFilters(categories, priorities, statuses) {
         taskFlow.activeFilters.categories = categories;
         taskFlow.activeFilters.priorities = priorities;
@@ -279,6 +282,7 @@ class TaskManager {
         taskFlow.saveToStorage();
         this.updateTaskList();
         
+        // Закрываем панель фильтров
         const filtersPanel = document.getElementById('filters-panel');
         if (filtersPanel) {
             filtersPanel.classList.remove('open');
@@ -287,6 +291,7 @@ class TaskManager {
         return true;
     }
     
+    // Сброс фильтров
     resetFilters() {
         taskFlow.activeFilters = {
             categories: ['work', 'personal', 'health', 'study'],
@@ -301,5 +306,6 @@ class TaskManager {
     }
 }
 
+// Создаем и экспортируем экземпляр
 const taskManager = new TaskManager();
 window.taskManager = taskManager;
