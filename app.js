@@ -57,7 +57,6 @@ class TaskFlowApp {
             
             if (!backendAvailable) {
                 console.warn('⚠️ Сервер недоступен, работаем в оффлайн режиме');
-                // Продолжаем инициализацию в оффлайн режиме
             }
             
             // 4. Загружаем данные с сервера
@@ -95,7 +94,7 @@ class TaskFlowApp {
                     }
                 }, 500);
                 
-            }, 1000);
+            }, 500);
             
             this.isInitialized = true;
             
@@ -382,6 +381,14 @@ class TaskFlowApp {
                 if (typeof archiveManager !== 'undefined') {
                     archiveManager.searchInArchive(e.target.value);
                 }
+            });
+        }
+        
+        // Сортировка
+        const sortBtn = document.getElementById('sort-btn');
+        if (sortBtn) {
+            sortBtn.addEventListener('click', () => {
+                alert('Функция сортировки в разработке');
             });
         }
     }
