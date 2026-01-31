@@ -353,8 +353,15 @@ class TaskManager {
             
             // Показываем сообщение о напоминании
             if (taskData.is_reminder) {
-                if (typeof showToast === 'function') {
-                    showToast(`Напоминание создано! Оно придет в чат с ботом в ${taskData.time} ${taskFlow.formatDate(taskData.date)}`, 'success');
+                const reminderDate = new Date(`${taskData.date}T${taskData.time}`);
+                const now = new Date();
+                const timeDiff = reminderDate.getTime() - now.getTime();
+                const minutesDiff = Math.floor(timeDiff / (1000 * 60));
+                
+                if (minutesDiff > 0) {
+                    showToast(`Напоминание создано! Оно придет в чат через ${minutesDiff} минут`, 'success');
+                } else {
+                    showToast('Напоминание создано! Оно придет в чат в указанное время', 'success');
                 }
             }
             
