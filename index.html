@@ -2,20 +2,58 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TaskFlow 🚀</title>
     <meta name="description" content="Умный планировщик задач для Telegram">
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="manifest" href="manifest.json">
+    <style>
+        /* Инлайн стили для быстрой загрузки */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+        }
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body class="dark-theme">
-    <div class="app-container">
+    <!-- Загрузочный экран -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-spinner"></div>
+        <h2>TaskFlow</h2>
+        <p>Загрузка приложения...</p>
+    </div>
+
+    <!-- Основной контейнер -->
+    <div class="app-container" style="display: none;">
         <!-- Header -->
         <header class="header">
             <div class="header-left">
-                <div class="logo">
+                <div class="logo" onclick="switchPage('tasks')" style="cursor: pointer;">
                     <i class="fas fa-rocket"></i>
                     <h1>TaskFlow</h1>
                 </div>
@@ -25,116 +63,479 @@
                 <button class="btn-icon" id="theme-toggle" title="Сменить тему">
                     <i class="fas fa-moon"></i>
                 </button>
-                <button class="btn-icon" id="filter-btn" title="Фильтры">
-                    <i class="fas fa-filter"></i>
+                <button class="btn-icon" id="search-btn" title="Поиск">
+                    <i class="fas fa-search"></i>
                 </button>
             </div>
         </header>
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Tasks Section -->
-            <div class="tasks-section" id="tasks-section">
-                <div class="section-header">
+            <!-- Страница задач -->
+            <div class="page active" id="tasks-page">
+                <div class="page-header">
                     <h2><i class="fas fa-tasks"></i> Мои задачи</h2>
-                    <div class="tasks-stats">
-                        <span class="stat-badge">
-                            <i class="fas fa-circle"></i>
-                            <span id="active-tasks">0</span> активных
-                        </span>
-                        <span class="stat-badge completed">
-                            <i class="fas fa-check-circle"></i>
-                            <span id="completed-tasks">0</span> выполнено
-                        </span>
-                    </div>
-                </div>
-                
-                <div class="tasks-list" id="tasks-list">
-                    <!-- Tasks will be loaded here -->
-                    <div class="empty-state">
-                        <i class="fas fa-clipboard-list"></i>
-                        <h3>Нет активных задач</h3>
-                        <p>Добавьте первую задачу, нажав на плюсик</p>
+                    <div class="header-actions">
+                        <button class="btn-icon" id="filter-toggle-btn">
+                            <i class="fas fa-filter"></i>
+                        </button>
+                        <button class="btn-icon" id="sort-btn">
+                            <i class="fas fa-sort-amount-down"></i>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Archived Tasks (collapsible) -->
-                <div class="archived-section">
-                    <button class="archived-toggle" id="archived-toggle">
-                        <i class="fas fa-archive"></i>
-                        <span>Архив выполненных</span>
-                        <i class="fas fa-chevron-down"></i>
-                    </button>
-                    <div class="archived-list" id="archived-list">
-                        <!-- Archived tasks will appear here -->
+                <!-- Быстрые фильтры -->
+                <div class="quick-filters" id="quick-filters">
+                    <button class="filter-chip active" data-filter="today">Сегодня</button>
+                    <button class="filter-chip" data-filter="tomorrow">Завтра</button>
+                    <button class="filter-chip" data-filter="week">Неделя</button>
+                    <button class="filter-chip" data-filter="overdue">Просрочено</button>
+                </div>
+
+                <!-- Список задач -->
+                <div class="tasks-container">
+                    <div class="tasks-list" id="tasks-list">
+                        <!-- Задачи загружаются динамически -->
+                    </div>
+                </div>
+
+                <!-- Пустое состояние -->
+                <div class="empty-state" id="empty-tasks">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>Нет задач</h3>
+                    <p>Нажмите на плюсик, чтобы добавить первую задачу</p>
+                </div>
+            </div>
+
+            <!-- Страница календаря -->
+            <div class="page" id="calendar-page">
+                <div class="page-header">
+                    <h2><i class="fas fa-calendar-alt"></i> Календарь</h2>
+                    <div class="header-actions">
+                        <button class="btn-small" id="today-btn">Сегодня</button>
+                        <button class="btn-icon" id="calendar-view-toggle">
+                            <i class="fas fa-calendar-week"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Выбор месяца -->
+                <div class="calendar-controls">
+                    <button class="btn-icon" id="prev-month"><i class="fas fa-chevron-left"></i></button>
+                    <h3 id="current-month">Май 2024</h3>
+                    <button class="btn-icon" id="next-month"><i class="fas fa-chevron-right"></i></button>
+                </div>
+
+                <!-- Календарь -->
+                <div class="calendar-grid" id="calendar-grid">
+                    <!-- Дни недели -->
+                    <div class="calendar-day weekday">Пн</div>
+                    <div class="calendar-day weekday">Вт</div>
+                    <div class="calendar-day weekday">Ср</div>
+                    <div class="calendar-day weekday">Чт</div>
+                    <div class="calendar-day weekday">Пт</div>
+                    <div class="calendar-day weekday">Сб</div>
+                    <div class="calendar-day weekday">Вс</div>
+                    
+                    <!-- Дни календаря генерируются через JS -->
+                </div>
+
+                <!-- Список задач на выбранный день -->
+                <div class="day-tasks" id="day-tasks">
+                    <h4><i class="far fa-calendar-check"></i> Задачи на <span id="selected-date">сегодня</span></h4>
+                    <div class="day-tasks-list" id="day-tasks-list">
+                        <!-- Задачи на выбранный день -->
                     </div>
                 </div>
             </div>
 
-            <!-- Stats Section -->
-            <div class="stats-section" id="stats-section" style="display: none;">
-                <div class="section-header">
-                    <h2><i class="fas fa-chart-line"></i> Статистика</h2>
-                    <button class="btn-small" id="refresh-stats">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
+            <!-- Страница архива -->
+            <div class="page" id="archive-page">
+                <div class="page-header">
+                    <h2><i class="fas fa-archive"></i> Архив</h2>
+                    <div class="header-actions">
+                        <button class="btn-small" id="clear-archive">
+                            <i class="fas fa-trash"></i> Очистить
+                        </button>
+                    </div>
                 </div>
 
-                <div class="stats-grid">
+                <!-- Фильтры архива -->
+                <div class="archive-filters">
+                    <div class="filter-group">
+                        <label><input type="checkbox" name="archive-type" value="completed" checked> Выполненные</label>
+                        <label><input type="checkbox" name="archive-type" value="deleted"> Удалённые</label>
+                        <label><input type="checkbox" name="archive-type" value="old"> Старые</label>
+                    </div>
+                    <input type="text" class="search-input" placeholder="Поиск в архиве..." id="archive-search">
+                </div>
+
+                <!-- Список архивных задач -->
+                <div class="archive-list" id="archive-list">
+                    <!-- Архивные задачи загружаются динамически -->
+                </div>
+
+                <!-- Пустой архив -->
+                <div class="empty-state" id="empty-archive">
+                    <i class="fas fa-box-open"></i>
+                    <h3>Архив пуст</h3>
+                    <p>Здесь будут отображаться выполненные и удалённые задачи</p>
+                </div>
+            </div>
+
+            <!-- Страница статистики -->
+            <div class="page" id="stats-page">
+                <div class="page-header">
+                    <h2><i class="fas fa-chart-line"></i> Статистика</h2>
+                    <div class="header-actions">
+                        <button class="btn-icon" id="refresh-stats">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
+                        <button class="btn-icon" id="export-stats">
+                            <i class="fas fa-download"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Общая статистика -->
+                <div class="stats-summary">
                     <div class="stat-card">
-                        <div class="stat-icon">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #667eea, #764ba2);">
                             <i class="fas fa-tasks"></i>
                         </div>
                         <div class="stat-info">
-                            <h3 id="total-tasks-stat">0</h3>
+                            <h3 id="total-tasks">0</h3>
                             <p>Всего задач</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
                             <i class="fas fa-check-circle"></i>
                         </div>
                         <div class="stat-info">
-                            <h3 id="completion-rate">0%</h3>
+                            <h3 id="completed-tasks">0</h3>
                             <p>Выполнено</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
                             <i class="fas fa-bolt"></i>
                         </div>
                         <div class="stat-info">
-                            <h3 id="productivity-score">0</h3>
+                            <h3 id="productivity">0%</h3>
                             <p>Продуктивность</p>
                         </div>
                     </div>
                     <div class="stat-card">
-                        <div class="stat-icon">
-                            <i class="fas fa-calendar-check"></i>
+                        <div class="stat-icon" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                            <i class="fas fa-fire"></i>
                         </div>
                         <div class="stat-info">
-                            <h3 id="streak-days">0</h3>
+                            <h3 id="streak">0</h3>
                             <p>Дней подряд</p>
                         </div>
                     </div>
                 </div>
 
+                <!-- Графики -->
                 <div class="charts-container">
-                    <div class="chart">
+                    <div class="chart-wrapper">
                         <h4><i class="fas fa-chart-pie"></i> По категориям</h4>
-                        <div class="chart-placeholder" id="category-chart">
+                        <div class="chart-box">
                             <canvas id="categoryChart"></canvas>
                         </div>
                     </div>
-                    <div class="chart">
+                    <div class="chart-wrapper">
                         <h4><i class="fas fa-chart-bar"></i> По дням недели</h4>
-                        <div class="chart-placeholder" id="weekday-chart">
+                        <div class="chart-box">
                             <canvas id="weekdayChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Подробная статистика -->
+                <div class="detailed-stats">
+                    <h4><i class="fas fa-list-ol"></i> Подробнее</h4>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">Среднее в день</span>
+                            <span class="stat-value" id="avg-per-day">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Лучший день</span>
+                            <span class="stat-value" id="best-day">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Выполняется</span>
+                            <span class="stat-value" id="in-progress">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Просрочено</span>
+                            <span class="stat-value" id="overdue-tasks">0</span>
                         </div>
                     </div>
                 </div>
             </div>
         </main>
+
+        <!-- Меню фильтров (выдвижное) -->
+        <div class="filters-panel" id="filters-panel">
+            <div class="filters-header">
+                <h3><i class="fas fa-filter"></i> Фильтры</h3>
+                <button class="close-filters">&times;</button>
+            </div>
+            <div class="filters-content">
+                <!-- Категории -->
+                <div class="filter-section">
+                    <h4>Категории</h4>
+                    <div class="filter-checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="category" value="work" checked>
+                            <span class="checkmark"></span>
+                            <i class="fas fa-briefcase"></i>
+                            <span>Работа</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="category" value="personal" checked>
+                            <span class="checkmark"></span>
+                            <i class="fas fa-user"></i>
+                            <span>Личное</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="category" value="health" checked>
+                            <span class="checkmark"></span>
+                            <i class="fas fa-heart"></i>
+                            <span>Здоровье</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="category" value="study" checked>
+                            <span class="checkmark"></span>
+                            <i class="fas fa-graduation-cap"></i>
+                            <span>Учёба</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Приоритеты -->
+                <div class="filter-section">
+                    <h4>Приоритет</h4>
+                    <div class="filter-checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="priority" value="high" checked>
+                            <span class="checkmark"></span>
+                            <span class="priority-dot high"></span>
+                            <span>Высокий</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="priority" value="medium" checked>
+                            <span class="checkmark"></span>
+                            <span class="priority-dot medium"></span>
+                            <span>Средний</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="priority" value="low" checked>
+                            <span class="checkmark"></span>
+                            <span class="priority-dot low"></span>
+                            <span>Низкий</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Статусы -->
+                <div class="filter-section">
+                    <h4>Статус</h4>
+                    <div class="filter-checkboxes">
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="status" value="active" checked>
+                            <span class="checkmark"></span>
+                            <i class="fas fa-clock"></i>
+                            <span>Активные</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="status" value="completed">
+                            <span class="checkmark"></span>
+                            <i class="fas fa-check"></i>
+                            <span>Выполненные</span>
+                        </label>
+                        <label class="filter-checkbox">
+                            <input type="checkbox" name="status" value="overdue">
+                            <span class="checkmark"></span>
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Просроченные</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Кнопки действий -->
+                <div class="filter-actions">
+                    <button class="btn btn-outline" id="reset-filters">Сбросить все</button>
+                    <button class="btn btn-primary" id="apply-filters">Применить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Action Button с меню -->
+        <div class="fab-container">
+            <div class="fab-menu" id="fab-menu">
+                <button class="fab-menu-item" data-action="quick-task">
+                    <div class="fab-icon">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <span class="fab-label">Быстрая задача</span>
+                </button>
+                <button class="fab-menu-item" data-action="add-note">
+                    <div class="fab-icon">
+                        <i class="fas fa-sticky-note"></i>
+                    </div>
+                    <span class="fab-label">Заметка</span>
+                </button>
+                <button class="fab-menu-item" data-action="add-reminder">
+                    <div class="fab-icon">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <span class="fab-label">Напоминание</span>
+                </button>
+            </div>
+            <button class="fab-main" id="fab-main">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+        <!-- Модалка задачи -->
+        <div class="modal" id="task-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-plus-circle"></i> Новая задача</h3>
+                    <button class="close-modal">&times;</button>
+                </div>
+                
+                <form id="task-form">
+                    <!-- Выбор типа -->
+                    <div class="task-type-tabs">
+                        <button type="button" class="type-tab active" data-type="task">Задача</button>
+                        <button type="button" class="type-tab" data-type="note">Заметка</button>
+                        <button type="button" class="type-tab" data-type="reminder">Напоминание</button>
+                    </div>
+
+                    <!-- Категории -->
+                    <div class="form-group">
+                        <label>Категория:</label>
+                        <div class="category-tags">
+                            <button type="button" class="category-tag" data-category="work">
+                                <i class="fas fa-briefcase"></i> Работа
+                            </button>
+                            <button type="button" class="category-tag active" data-category="personal">
+                                <i class="fas fa-user"></i> Личное
+                            </button>
+                            <button type="button" class="category-tag" data-category="health">
+                                <i class="fas fa-heart"></i> Здоровье
+                            </button>
+                            <button type="button" class="category-tag" data-category="study">
+                                <i class="fas fa-graduation-cap"></i> Учёба
+                            </button>
+                        </div>
+                        <input type="hidden" id="task-category" value="personal">
+                    </div>
+
+                    <!-- Текст задачи -->
+                    <div class="form-group">
+                        <label for="task-text">Что нужно сделать?</label>
+                        <textarea 
+                            id="task-text" 
+                            placeholder="Например: Сделать тренировку, прочитать главу книги..." 
+                            rows="3"
+                            required></textarea>
+                    </div>
+
+                    <!-- Дата и время -->
+                    <div class="form-group">
+                        <label>Когда?</label>
+                        <div class="datetime-inputs">
+                            <div class="date-input">
+                                <input type="date" id="task-date" required>
+                            </div>
+                            <div class="time-input">
+                                <input type="time" id="task-time">
+                                <button type="button" class="btn-small" id="set-now-btn">Сейчас</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Приоритет -->
+                    <div class="form-group">
+                        <label>Приоритет:</label>
+                        <div class="priority-buttons">
+                            <button type="button" class="priority-btn" data-priority="low">
+                                <i class="fas fa-arrow-down"></i> Низкий
+                            </button>
+                            <button type="button" class="priority-btn active" data-priority="medium">
+                                <i class="fas fa-minus"></i> Средний
+                            </button>
+                            <button type="button" class="priority-btn" data-priority="high">
+                                <i class="fas fa-arrow-up"></i> Высокий
+                            </button>
+                        </div>
+                        <input type="hidden" id="task-priority" value="medium">
+                    </div>
+
+                    <!-- Напоминание -->
+                    <div class="form-group">
+                        <label for="task-reminder">Напоминание:</label>
+                        <select id="task-reminder">
+                            <option value="0">Не напоминать</option>
+                            <option value="5">За 5 минут</option>
+                            <option value="15" selected>За 15 минут</option>
+                            <option value="30">За 30 минут</option>
+                            <option value="60">За 1 час</option>
+                            <option value="1440">За день</option>
+                        </select>
+                    </div>
+
+                    <!-- Кнопки -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary close-modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary" id="save-task-btn">
+                            <i class="fas fa-save"></i> Сохранить
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Быстрая заметка (для календаря) -->
+        <div class="modal" id="quick-note-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-sticky-note"></i> Быстрая заметка</h3>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <form id="quick-note-form">
+                    <div class="form-group">
+                        <textarea 
+                            id="quick-note-text" 
+                            placeholder="Введите текст заметки..." 
+                            rows="4"
+                            required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="note-color">Цвет заметки:</label>
+                        <div class="color-picker">
+                            <button type="button" class="color-option" data-color="#ffeb3b" style="background: #ffeb3b;"></button>
+                            <button type="button" class="color-option" data-color="#4caf50" style="background: #4caf50;"></button>
+                            <button type="button" class="color-option" data-color="#2196f3" style="background: #2196f3;"></button>
+                            <button type="button" class="color-option active" data-color="#e91e63" style="background: #e91e63;"></button>
+                            <button type="button" class="color-option" data-color="#9c27b0" style="background: #9c27b0;"></button>
+                        </div>
+                        <input type="hidden" id="note-color" value="#e91e63">
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary close-modal">Отмена</button>
+                        <button type="submit" class="btn btn-primary">Сохранить заметку</button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
         <!-- Bottom Navigation -->
         <nav class="bottom-nav">
@@ -142,218 +543,37 @@
                 <i class="fas fa-tasks"></i>
                 <span>Задачи</span>
             </button>
-            <div class="add-task-wrapper">
-                <button class="add-task-btn" id="add-task-btn">
-                    <i class="fas fa-plus"></i>
-                </button>
-            </div>
+            <button class="nav-btn" data-page="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Календарь</span>
+            </button>
+            <button class="nav-btn" data-page="archive">
+                <i class="fas fa-archive"></i>
+                <span>Архив</span>
+            </button>
             <button class="nav-btn" data-page="stats">
                 <i class="fas fa-chart-line"></i>
                 <span>Статистика</span>
             </button>
         </nav>
-    </div>
 
-    <!-- Task Modal -->
-    <div class="modal" id="task-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-plus-circle"></i> Новая задача</h3>
-                <button class="close-modal">&times;</button>
+        <!-- Toast уведомления -->
+        <div class="toast-container" id="toast-container">
+            <div class="toast success">
+                <i class="fas fa-check-circle"></i>
+                <span class="toast-message">Задача сохранена!</span>
             </div>
-            
-            <form id="task-form">
-                <!-- Quick Actions -->
-                <div class="quick-actions-modal">
-                    <button type="button" class="quick-action-btn" data-type="quick">
-                        <i class="fas fa-bolt"></i>
-                        <span>Быстрая</span>
-                    </button>
-                    <button type="button" class="quick-action-btn" data-type="note">
-                        <i class="fas fa-sticky-note"></i>
-                        <span>Заметка</span>
-                    </button>
-                    <button type="button" class="quick-action-btn active" data-type="task">
-                        <i class="fas fa-tasks"></i>
-                        <span>Задача</span>
-                    </button>
-                </div>
-
-                <!-- Category Selection -->
-                <div class="form-group">
-                    <label>Категория:</label>
-                    <div class="category-selector">
-                        <div class="category-option" data-category="work" data-emoji="💼">
-                            <i class="fas fa-briefcase"></i>
-                            <span>Работа</span>
-                        </div>
-                        <div class="category-option active" data-category="personal" data-emoji="👤">
-                            <i class="fas fa-user"></i>
-                            <span>Личное</span>
-                        </div>
-                        <div class="category-option" data-category="health" data-emoji="❤️">
-                            <i class="fas fa-heart"></i>
-                            <span>Здоровье</span>
-                        </div>
-                        <div class="category-option" data-category="study" data-emoji="📚">
-                            <i class="fas fa-graduation-cap"></i>
-                            <span>Учёба</span>
-                        </div>
-                    </div>
-                    <input type="hidden" id="selected-category" value="personal">
-                    <input type="hidden" id="selected-emoji" value="👤">
-                </div>
-
-                <!-- Task Text -->
-                <div class="form-group">
-                    <label for="task-text">Что нужно сделать?</label>
-                    <textarea 
-                        id="task-text" 
-                        placeholder="Например: Сделать тренировку, прочитать главу книги..." 
-                        rows="3"
-                        required></textarea>
-                </div>
-
-                <!-- Date Input -->
-                <div class="form-group">
-                    <label for="task-date">Когда?</label>
-                    <div class="date-input-wrapper">
-                        <select id="task-date-type">
-                            <option value="today">Сегодня</option>
-                            <option value="tomorrow">Завтра</option>
-                            <option value="specific">Выбрать дату</option>
-                        </select>
-                        <input type="date" id="task-date" style="display: none;">
-                    </div>
-                </div>
-
-                <!-- Time Input -->
-                <div class="form-group">
-                    <label for="task-time">Во сколько? (необязательно)</label>
-                    <div class="time-input-wrapper">
-                        <input type="number" id="task-hours" min="0" max="23" placeholder="00" value="">
-                        <span>:</span>
-                        <input type="number" id="task-minutes" min="0" max="59" placeholder="00" value="">
-                        <button type="button" class="time-now-btn" id="time-now-btn">
-                            <i class="fas fa-clock"></i> Сейчас
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Priority -->
-                <div class="form-group">
-                    <label>Важность:</label>
-                    <div class="priority-selector">
-                        <div class="priority-option" data-priority="low">
-                            <i class="fas fa-arrow-down"></i>
-                            <span>Низкая</span>
-                        </div>
-                        <div class="priority-option active" data-priority="normal">
-                            <i class="fas fa-minus"></i>
-                            <span>Обычная</span>
-                        </div>
-                        <div class="priority-option" data-priority="high">
-                            <i class="fas fa-arrow-up"></i>
-                            <span>Высокая</span>
-                        </div>
-                    </div>
-                    <input type="hidden" id="selected-priority" value="normal">
-                </div>
-
-                <!-- Buttons -->
-                <div class="form-buttons">
-                    <button type="button" class="btn btn-secondary close-modal">Отмена</button>
-                    <button type="submit" class="btn btn-primary" id="submit-btn">
-                        <i class="fas fa-save"></i> Сохранить
-                    </button>
-                </div>
-            </form>
         </div>
-    </div>
 
-    <!-- Quick Actions Menu (from plus button) -->
-    <div class="quick-actions-menu" id="quick-actions-menu">
-        <div class="quick-actions-content">
-            <button class="quick-action-item" data-action="quick-task">
-                <div class="action-icon">
-                    <i class="fas fa-bolt"></i>
-                </div>
-                <div class="action-text">
-                    <h4>Быстрая задача</h4>
-                    <p>Без категории и времени</p>
-                </div>
-            </button>
-            <button class="quick-action-item" data-action="add-note">
-                <div class="action-icon">
-                    <i class="fas fa-sticky-note"></i>
-                </div>
-                <div class="action-text">
-                    <h4>Заметка</h4>
-                    <p>Только текст, без напоминаний</p>
-                </div>
-            </button>
-            <button class="quick-action-item" data-action="add-reminder">
-                <div class="action-icon">
-                    <i class="fas fa-bell"></i>
-                </div>
-                <div class="action-text">
-                    <h4>Напоминание</h4>
-                    <p>С указанием времени</p>
-                </div>
-            </button>
-        </div>
-    </div>
-
-    <!-- Filter Modal -->
-    <div class="modal" id="filter-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-filter"></i> Фильтры</h3>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="filter-options">
-                <button class="filter-option active" data-filter="all">
-                    <i class="fas fa-list"></i> Все задачи
-                </button>
-                <button class="filter-option" data-filter="today">
-                    <i class="fas fa-sun"></i> Сегодня
-                </button>
-                <button class="filter-option" data-filter="tomorrow">
-                    <i class="fas fa-calendar-day"></i> Завтра
-                </button>
-                <button class="filter-option" data-filter="week">
-                    <i class="fas fa-calendar-week"></i> Эта неделя
-                </button>
-                <button class="filter-option" data-filter="no-date">
-                    <i class="fas fa-calendar-times"></i> Без даты
-                </button>
-                <button class="filter-option" data-filter="high">
-                    <i class="fas fa-exclamation"></i> Высокая важность
-                </button>
+        <!-- Модалка загрузки -->
+        <div class="loading-modal" id="global-loading">
+            <div class="loading-content">
+                <div class="spinner"></div>
+                <p>Сохранение...</p>
             </div>
         </div>
     </div>
 
-    <!-- Success Toast -->
-    <div class="toast" id="success-toast">
-        <i class="fas fa-check-circle"></i>
-        <span id="toast-message">Задача успешно сохранена!</span>
-    </div>
-
-    <!-- Error Toast -->
-    <div class="toast error" id="error-toast">
-        <i class="fas fa-exclamation-circle"></i>
-        <span id="error-message">Ошибка при сохранении</span>
-    </div>
-
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loading-overlay">
-        <div class="loading-spinner"></div>
-        <p>Сохранение...</p>
-    </div>
-
-    <!-- Charts.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
