@@ -1,8 +1,44 @@
-// calendar.js - исправляем календарь
+// calendar.js - исправленная версия
 class CalendarManager {
     constructor() {
         this.currentDate = new Date();
-        this.selectedDate = new Date().toISOString().split('T')[0];
+        // Используем локальную дату для выбранной даты
+        const now = new Date();
+        this.selectedDate = this.formatDateForInput(now);
+    }
+    
+    // Форматирование даты для input[type="date"]
+    formatDateForInput(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+    
+    // Форматирование даты для отображения
+    formatDateDisplay(dateStr) {
+        const date = new Date(dateStr);
+        const today = new Date();
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        
+        // Приводим к одному формату для сравнения
+        const dateFormatted = this.formatDateForInput(date);
+        const todayFormatted = this.formatDateForInput(today);
+        const tomorrowFormatted = this.formatDateForInput(tomorrow);
+        
+        if (dateFormatted === todayFormatted) {
+            return 'Сегодня';
+        }
+        if (dateFormatted === tomorrowFormatted) {
+            return 'Завтра';
+        }
+        
+        return date.toLocaleDateString('ru-RU', {
+            weekday: 'long',
+            day: 'numeric',
+            month: 'long'
+        });
     }
     
     init() {
@@ -30,8 +66,9 @@ class CalendarManager {
     }
     
     goToToday() {
+        const now = new Date();
         this.currentDate = new Date();
-        this.selectedDate = this.currentDate.toISOString().split('T')[0];
+        this.selectedDate = this.formatDateForInput(now);
         this.renderCalendar();
         this.updateDayTasks();
         
@@ -61,7 +98,8 @@ class CalendarManager {
         // Заголовок месяца
         const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 
                           'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
-        monthElement.textContent = `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+        const monthYear = `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+        monthElement.textContent = monthYear;
         
         // Дни недели
         const weekdays = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
@@ -73,44 +111,62 @@ class CalendarManager {
         });
         
         // Первый день месяца
-        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
-        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
-        const today = new Date().toISOString().split('T')[0];
+        const year = this.currentDate.getFullYear();
+        const month = this.currentDate.getMonth();
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        
+        // Определяем день недели для первого дня (0 - воскресенье, 1 - понедельник и т.д.)
+        let firstDayOfWeek = firstDay.getDay();
+        // Преобразуем к нашей системе (понедельник = 0)
+        firstDayOfWeek = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+        
+        // Сегодняшняя дата
+        const today = new Date();
+        const todayFormatted = this.formatDateForInput(today);
+        
+        // Выбранная дата
+        const selectedFormatted = this.selectedDate;
         
         // Пустые ячейки до первого дня
-        const firstDayOfWeek = firstDay.getDay() || 7; // Воскресенье = 0 -> 7
-        for (let i = 1; i < firstDayOfWeek; i++) {
+        for (let i = 0; i < firstDayOfWeek; i++) {
             container.appendChild(this.createEmptyDay());
         }
         
         // Дни месяца
         for (let day = 1; day <= lastDay.getDate(); day++) {
-            const date = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), day);
-            const dateStr = date.toISOString().split('T')[0];
+            const date = new Date(year, month, day);
+            const dateStr = this.formatDateForInput(date);
             
-            container.appendChild(this.createDayElement(day, dateStr, today));
+            container.appendChild(this.createDayElement(day, dateStr, todayFormatted, selectedFormatted));
         }
     }
     
-    createDayElement(dayNumber, dateStr, today) {
+    createDayElement(dayNumber, dateStr, todayStr, selectedStr) {
         const dayElement = document.createElement('div');
         dayElement.className = 'calendar-day';
         dayElement.dataset.date = dateStr;
         
         // Сегодня
-        if (dateStr === today) {
+        if (dateStr === todayStr) {
             dayElement.classList.add('today');
         }
         
         // Выбранный день
-        if (dateStr === this.selectedDate) {
+        if (dateStr === selectedStr) {
             dayElement.classList.add('selected');
         }
         
         // Задачи на этот день
-        const hasTasks = taskFlow.allTasks.some(task => 
-            task.date === dateStr && !task.completed
-        );
+        const hasTasks = taskFlow.allTasks.some(task => {
+            if (!task.date) return false;
+            // Форматируем дату задачи для сравнения
+            let taskDate = task.date;
+            if (taskDate.includes('T')) {
+                taskDate = taskDate.split('T')[0];
+            }
+            return taskDate === dateStr && !task.completed && !task.archived;
+        });
         
         if (hasTasks) {
             dayElement.classList.add('has-tasks');
@@ -152,27 +208,19 @@ class CalendarManager {
         
         if (!container || !dateElement) return;
         
-        // Форматируем дату
-        const date = new Date(this.selectedDate);
-        const today = new Date().toISOString().split('T')[0];
+        // Форматируем дату для отображения
+        const displayDate = this.formatDateDisplay(this.selectedDate);
+        dateElement.textContent = displayDate;
         
-        let dateText = '';
-        if (this.selectedDate === today) {
-            dateText = 'Сегодня';
-        } else {
-            dateText = date.toLocaleDateString('ru-RU', { 
-                weekday: 'long',
-                day: 'numeric', 
-                month: 'long' 
-            });
-        }
-        
-        dateElement.textContent = dateText;
-        
-        // Задачи на выбранный день
-        const dayTasks = taskFlow.allTasks.filter(task => 
-            task.date === this.selectedDate && !task.completed
-        );
+        // Находим задачи на выбранный день
+        const dayTasks = taskFlow.allTasks.filter(task => {
+            if (!task.date) return false;
+            let taskDate = task.date;
+            if (taskDate.includes('T')) {
+                taskDate = taskDate.split('T')[0];
+            }
+            return taskDate === this.selectedDate && !task.completed && !task.archived;
+        });
         
         if (dayTasks.length === 0) {
             container.innerHTML = `
@@ -193,6 +241,7 @@ class CalendarManager {
                     <div class="day-task-title">
                         <span class="task-emoji">${task.emoji || '📝'}</span>
                         ${task.text}
+                        ${task.is_reminder ? '<i class="fas fa-bell" style="color: #f59e0b; margin-left: 5px;"></i>' : ''}
                     </div>
                     ${task.time ? `
                         <div class="day-task-time">
@@ -202,9 +251,11 @@ class CalendarManager {
                     ` : ''}
                 </div>
                 <div class="day-task-actions">
-                    <button class="task-btn complete" onclick="taskManager.toggleComplete('${task.id}')">
-                        <i class="fas fa-check"></i>
-                    </button>
+                    ${task.is_reminder ? '' : `
+                        <button class="task-btn complete" onclick="taskManager.toggleComplete('${task.id}')">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    `}
                 </div>
             </div>
         `).join('');
