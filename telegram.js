@@ -1,9 +1,9 @@
-// telegram.js
 class TelegramIntegration {
     constructor() {
         this.tg = window.Telegram?.WebApp || null;
         this.user = null;
         this.isReady = false;
+        this.isBackendAvailable = false;
     }
     
     init() {
@@ -14,21 +14,13 @@ class TelegramIntegration {
         }
         
         try {
-            // Важно: сначала ready(), потом expand()
             this.tg.ready();
             this.tg.expand();
             
-            // Получаем данные пользователя
             this.user = this.tg.initDataUnsafe?.user;
             if (this.user?.id) {
                 taskFlow.userId = this.user.id;
                 console.log('Telegram user:', this.user);
-                
-                // Проверяем авторизацию
-                const initData = this.tg.initData;
-                if (initData) {
-                    console.log('User авторизован в Telegram');
-                }
             } else {
                 taskFlow.userId = `tg_noauth_${Date.now()}`;
                 console.log('Telegram без авторизации');
@@ -46,25 +38,18 @@ class TelegramIntegration {
         if (!this.isBackendAvailable) return false;
         
         try {
-            console.log('Отправка задачи на сервер:', taskData);
-            
             const response = await fetch(`${taskFlow.CONFIG.BACKEND_URL}/api/new_task`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(taskData),
                 signal: AbortSignal.timeout(5000)
             });
             
             if (response.ok) {
-                const result = await response.json();
-                console.log('Сервер ответил:', result);
+                await response.json();
                 return true;
-            } else {
-                console.error('Ошибка сервера:', response.status);
-                return false;
             }
+            return false;
         } catch (error) {
             console.warn('Ошибка отправки:', error.message);
             this.isBackendAvailable = false;
@@ -79,17 +64,43 @@ class TelegramIntegration {
                 signal: AbortSignal.timeout(3000)
             });
             
-            if (response.ok) {
-                const data = await response.json();
-                this.isBackendAvailable = data.status === 'ok';
-                console.log('Бэкенд доступен:', this.isBackendAvailable);
-            } else {
-                this.isBackendAvailable = false;
-            }
+            this.isBackendAvailable = response.ok;
+            return this.isBackendAvailable;
         } catch (error) {
             console.warn('Бэкенд недоступен:', error.message);
             this.isBackendAvailable = false;
+            return false;
         }
-        return this.isBackendAvailable;
+    }
+    
+    setupWebMode() {
+        console.log('Запуск в браузерном режиме');
+        taskFlow.userId = `web_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        return true;
+    }
+    
+    showBackButton() {
+        if (this.tg?.BackButton) {
+            this.tg.BackButton.show();
+            this.tg.BackButton.onClick(() => {
+                this.hideBackButton();
+                if (typeof ui !== 'undefined') ui.closeAllModals();
+            });
+        }
+    }
+    
+    hideBackButton() {
+        if (this.tg?.BackButton) {
+            this.tg.BackButton.hide();
+        }
+    }
+    
+    sendToBot(data) {
+        if (!this.tg || !this.isReady) return;
+        try {
+            this.tg.sendData(JSON.stringify(data));
+        } catch (error) {
+            console.warn('Ошибка отправки в бота:', error);
+        }
     }
 }
