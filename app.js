@@ -88,12 +88,13 @@ class TaskFlowApp {
                 console.log('✅ TaskFlow инициализирован!');
                 
                 // Показываем уведомление
+               /*
                 setTimeout(() => {
                     if (typeof showToast === 'function') {
                         showToast(`TaskFlow готов! User ID: ${taskFlow.userId}`, 'success');
                     }
                 }, 500);
-                
+                */
             }, 500);
             
             this.isInitialized = true;
@@ -260,11 +261,13 @@ class TaskFlowApp {
         } catch (error) {
             console.error('❌ Ошибка загрузки данных:', error);
             
+            
             // Показываем предупреждение, но продолжаем работу
+            /*
             if (typeof showToast === 'function') {
                 showToast('Не удалось загрузить задачи с сервера', 'warning');
             }
-            
+            */
             // Загружаем из localStorage
             taskFlow.loadFromStorage();
         }
