@@ -470,7 +470,11 @@
                         <label>Когда?</label>
                         <div class="datetime-inputs">
                             <div class="date-input">
-                                <input type="date" id="task-date" required>
+                                <input type="text" id="task-time" 
+                                   placeholder="ЧЧ:ММ (например 14:30)" 
+                                   pattern="([0-1]?[0-9]|2[0-3]):([0-5][0-9])" 
+                                   maxlength="5"
+                                   required>
                             </div>
                             <div class="time-input">
                                 <input type="time" id="task-time" required>
