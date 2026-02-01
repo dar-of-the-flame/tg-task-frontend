@@ -38,6 +38,45 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        /* Новые стили для ввода времени */
+        .datetime-inputs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .date-input, .time-input {
+            flex: 1;
+            min-width: 120px;
+        }
+        
+        .date-input label,
+        .time-input label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+        
+        input[type="date"],
+        input[type="time"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: inherit;
+        }
+        
+        input[type="date"]:focus,
+        input[type="time"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
     </style>
 </head>
 <body class="dark-theme">
@@ -86,10 +125,16 @@
                         <button class="btn-icon" id="filter-toggle-btn">
                             <i class="fas fa-filter"></i>
                         </button>
-                        <button class="btn-icon" id="sort-btn">
+                        <button class="btn-icon" id="sort-btn" onclick="taskManager.sortTasks()">
                             <i class="fas fa-sort-amount-down"></i>
                         </button>
                     </div>
+                </div>
+
+                <!-- Поиск -->
+                <div class="search-container" style="margin-bottom: 16px;">
+                    <input type="text" class="search-input" id="tasks-search" placeholder="🔍 Поиск задач..." 
+                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary);">
                 </div>
 
                 <!-- Быстрые фильтры -->
@@ -100,6 +145,7 @@
                     <button class="filter-chip" data-filter="week">Неделя</button>
                     <button class="filter-chip" data-filter="overdue">Просрочено</button>
                     <button class="filter-chip" data-filter="reminders">Напоминания</button>
+                    <button class="filter-chip" data-filter="notes">Заметки</button>
                 </div>
 
                 <!-- Список задач -->
@@ -110,11 +156,11 @@
                 </div>
 
                 <!-- Пустое состояние -->
-                    <div class="empty-state" id="empty-tasks">
-        <i class="fas fa-clipboard-list"></i>
-        <h3>Нет задач</h3>
-        <p>Нажмите на плюсик внизу экрана, чтобы добавить первую задачу</p>
-    </div>
+                <div class="empty-state" id="empty-tasks">
+                    <i class="fas fa-clipboard-list"></i>
+                    <h3>Нет задач</h3>
+                    <p>Нажмите на плюсик внизу экрана, чтобы добавить первую задачу</p>
+                </div>
             </div>
 
             <!-- Страница календаря -->
@@ -170,6 +216,12 @@
                     </div>
                 </div>
 
+                <!-- Поиск в архиве -->
+                <div class="search-container" style="margin-bottom: 16px;">
+                    <input type="text" class="search-input" id="archive-search" placeholder="🔍 Поиск в архиве..." 
+                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary);">
+                </div>
+
                 <!-- Фильтры архива -->
                 <div class="archive-filters">
                     <div class="filter-group">
@@ -177,7 +229,6 @@
                         <label><input type="checkbox" name="archive-type" value="deleted"> Удалённые</label>
                         <label><input type="checkbox" name="archive-type" value="old"> Старые</label>
                     </div>
-                    <input type="text" class="search-input" placeholder="Поиск в архиве..." id="archive-search">
                 </div>
 
                 <!-- Список архивных задач -->
@@ -263,14 +314,6 @@
                     </div>
                 </div>
 
-                <!-- Список активных задач -->
-                <div class="stats-tasks-container">
-                    <h4><i class="fas fa-list-ol"></i> Активные задачи</h4>
-                    <div id="stats-tasks-list" style="max-height: 300px; overflow-y: auto; margin-top: 15px;">
-                        <!-- Активные задачи загружаются динамически -->
-                    </div>
-                </div>
-
                 <!-- Подробная статистика -->
                 <div class="detailed-stats">
                     <h4><i class="fas fa-list-ol"></i> Подробнее</h4>
@@ -284,7 +327,7 @@
                             <span class="stat-value" id="best-day">0</span>
                         </div>
                         <div class="stat-item">
-                            <span class="stat-label">Выполняется</span>
+                            <span class="stat-label">В процессе</span>
                             <span class="stat-value" id="in-progress">0</span>
                         </div>
                         <div class="stat-item">
@@ -465,25 +508,22 @@
                             required></textarea>
                     </div>
 
-                    <!-- Дата и время (только для задач и напоминаний) -->
+                    <!-- Дата и время -->
                     <div class="form-group" id="datetime-group">
                         <label>Когда?</label>
                         <div class="datetime-inputs">
                             <div class="date-input">
-                                <input type="text" id="task-time" 
-                                   placeholder="ЧЧ:ММ (например 14:30)" 
-                                   pattern="([0-1]?[0-9]|2[0-3]):([0-5][0-9])" 
-                                   maxlength="5"
-                                   required>
+                                <label for="task-date">Дата:</label>
+                                <input type="date" id="task-date">
                             </div>
                             <div class="time-input">
-                                <input type="time" id="task-time" required>
-                                <button type="button" class="btn-small" id="set-now-btn">Сейчас</button>
+                                <label for="task-time">Время:</label>
+                                <input type="time" id="task-time">
                             </div>
                         </div>
                     </div>
 
-                    <!-- Приоритет (только для задач) -->
+                    <!-- Приоритет -->
                     <div class="form-group" id="priority-group">
                         <label>Приоритет:</label>
                         <div class="priority-buttons">
@@ -510,60 +550,6 @@
                 </form>
             </div>
         </div>
-
-        <!-- Быстрая заметка (для календаря) -->
-        <div class="modal" id="quick-note-modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3><i class="fas fa-sticky-note"></i> Быстрая заметка</h3>
-                    <button class="close-modal">&times;</button>
-                </div>
-                <form id="quick-note-form">
-                    <div class="form-group">
-                        <textarea 
-                            id="quick-note-text" 
-                            placeholder="Введите текст заметки..." 
-                            rows="4"
-                            required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="note-color">Цвет заметки:</label>
-                        <div class="color-picker">
-                            <button type="button" class="color-option" data-color="#ffeb3b" style="background: #ffeb3b;"></button>
-                            <button type="button" class="color-option" data-color="#4caf50" style="background: #4caf50;"></button>
-                            <button type="button" class="color-option" data-color="#2196f3" style="background: #2196f3;"></button>
-                            <button type="button" class="color-option active" data-color="#e91e63" style="background: #e91e63;"></button>
-                            <button type="button" class="color-option" data-color="#9c27b0" style="background: #9c27b0;"></button>
-                        </div>
-                        <input type="hidden" id="note-color" value="#e91e63">
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-secondary close-modal">Отмена</button>
-                        <button type="submit" class="btn btn-primary">Сохранить заметку</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Bottom Navigation -->
-        <nav class="bottom-nav">
-            <button class="nav-btn active" data-page="tasks">
-                <i class="fas fa-tasks"></i>
-                <span>Задачи</span>
-            </button>
-            <button class="nav-btn" data-page="calendar">
-                <i class="fas fa-calendar-alt"></i>
-                <span>Календарь</span>
-            </button>
-            <button class="nav-btn" data-page="archive">
-                <i class="fas fa-archive"></i>
-                <span>Архив</span>
-            </button>
-            <button class="nav-btn" data-page="stats">
-                <i class="fas fa-chart-line"></i>
-                <span>Статистика</span>
-            </button>
-        </nav>
 
         <!-- Toast уведомления -->
         <div class="toast-container" id="toast-container">
