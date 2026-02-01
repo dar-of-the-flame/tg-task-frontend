@@ -77,6 +77,21 @@
             border-color: var(--primary);
             box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
         }
+        
+        /* Для мобильных устройств */
+        @media (max-width: 480px) {
+            .datetime-inputs {
+                flex-direction: column;
+            }
+            
+            .date-input, .time-input {
+                width: 100%;
+            }
+            
+            .fab-container {
+                bottom: 80px !important;
+            }
+        }
     </style>
 </head>
 <body class="dark-theme">
@@ -125,7 +140,7 @@
                         <button class="btn-icon" id="filter-toggle-btn">
                             <i class="fas fa-filter"></i>
                         </button>
-                        <button class="btn-icon" id="sort-btn" onclick="taskManager.sortTasks()">
+                        <button class="btn-icon" id="sort-btn">
                             <i class="fas fa-sort-amount-down"></i>
                         </button>
                     </div>
@@ -134,7 +149,7 @@
                 <!-- Поиск -->
                 <div class="search-container" style="margin-bottom: 16px;">
                     <input type="text" class="search-input" id="tasks-search" placeholder="🔍 Поиск задач..." 
-                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary);">
+                           style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); font-size: 14px;">
                 </div>
 
                 <!-- Быстрые фильтры -->
@@ -219,7 +234,7 @@
                 <!-- Поиск в архиве -->
                 <div class="search-container" style="margin-bottom: 16px;">
                     <input type="text" class="search-input" id="archive-search" placeholder="🔍 Поиск в архиве..." 
-                           style="width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary);">
+                           style="width: 100%; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-tertiary); color: var(--text-primary); font-size: 14px;">
                 </div>
 
                 <!-- Фильтры архива -->
@@ -550,6 +565,26 @@
                 </form>
             </div>
         </div>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-page="tasks">
+                <i class="fas fa-tasks"></i>
+                <span>Задачи</span>
+            </button>
+            <button class="nav-btn" data-page="calendar">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Календарь</span>
+            </button>
+            <button class="nav-btn" data-page="archive">
+                <i class="fas fa-archive"></i>
+                <span>Архив</span>
+            </button>
+            <button class="nav-btn" data-page="stats">
+                <i class="fas fa-chart-line"></i>
+                <span>Статистика</span>
+            </button>
+        </nav>
 
         <!-- Toast уведомления -->
         <div class="toast-container" id="toast-container">
