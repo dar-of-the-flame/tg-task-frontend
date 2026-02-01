@@ -2153,3 +2153,67 @@ select {
         right: 20px;
     }
 }
+
+/* Bottom Navigation */
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--bg-secondary);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 12px 8px;
+    z-index: 100;
+    backdrop-filter: blur(10px);
+    background: rgba(var(--bg-secondary-rgb), 0.95);
+}
+
+.nav-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    flex: 1;
+    max-width: 80px;
+    padding: 8px 4px;
+    border-radius: var(--radius-sm);
+}
+
+.nav-btn i {
+    font-size: 18px;
+}
+
+.nav-btn.active {
+    color: var(--primary);
+    background: var(--bg-tertiary);
+}
+
+/* Адаптивность для навигации */
+@media (max-width: 360px) {
+    .nav-btn {
+        font-size: 11px;
+        padding: 6px 2px;
+    }
+    
+    .nav-btn i {
+        font-size: 16px;
+    }
+}
+
+/* Убедимся, что контент не заходит под навигацию */
+.main-content {
+    padding-bottom: 80px;
+}
+
+/* Для FAB кнопки - поднимаем выше */
+.fab-container {
+    bottom: 80px;
+}
