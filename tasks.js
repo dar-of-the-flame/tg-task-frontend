@@ -3,6 +3,7 @@ class TaskManager {
     constructor() {
         this.tasks = taskFlow.allTasks;
         this.archived = taskFlow.archivedTasks;
+        this.searchTimeout = null;
     }
     
     // Фильтрация задач
@@ -42,8 +43,15 @@ class TaskManager {
                 return taskDate < todayStr && !task.completed && !task.archived;
             });
         }
-        if (taskFlow.activeFilters.status.includes('reminders')) {
-            filteredTasks = filteredTasks.filter(task => task.is_reminder);
+        
+        // Поиск по тексту
+        const searchInput = document.getElementById('tasks-search');
+        if (searchInput && searchInput.value.trim()) {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            filteredTasks = filteredTasks.filter(task => 
+                task.text.toLowerCase().includes(searchTerm) ||
+                (task.category && task.category.toLowerCase().includes(searchTerm))
+            );
         }
         
         // Быстрые фильтры
@@ -99,6 +107,9 @@ class TaskManager {
                 break;
             case 'reminders':
                 filteredTasks = filteredTasks.filter(task => task.is_reminder && !task.archived);
+                break;
+            case 'notes':
+                filteredTasks = filteredTasks.filter(task => task.task_type === 'note' && !task.archived);
                 break;
             case 'all':
             default:
@@ -164,39 +175,50 @@ class TaskManager {
     renderTaskItem(task) {
         const isCompleted = task.completed;
         const isReminder = task.is_reminder;
+        const isNote = task.task_type === 'note';
         const priorityClass = `priority-${task.priority || 'medium'}`;
         const completedClass = isCompleted ? 'completed' : '';
         const reminderClass = isReminder ? 'reminder' : '';
+        const noteClass = isNote ? 'note' : '';
         
         // Проверяем просроченность
         const today = new Date();
         const todayStr = taskFlow.formatDateForInput(today);
         let taskDate = task.date;
-        if (taskDate && taskDate.includes('T')) {
+        if (taskDate && typeof taskDate === 'string' && taskDate.includes('T')) {
             taskDate = taskDate.split('T')[0];
         }
         const isOverdue = taskDate && taskDate < todayStr && !task.completed && !task.archived;
         const overdueClass = isOverdue ? 'overdue' : '';
         
-        // Для напоминаний добавляем специальный стиль
-        const reminderStyle = isReminder ? 'border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.1);' : '';
+        // Форматируем время правильно
+        let displayTime = task.time;
+        if (displayTime && typeof displayTime === 'string' && displayTime.includes(':')) {
+            // Оставляем только часы и минуты
+            displayTime = displayTime.substring(0, 5);
+        }
+        
+        // Определяем иконку в зависимости от типа
+        let icon = '📝';
+        if (isReminder) icon = '🔔';
+        if (isNote) icon = '📄';
         
         return `
-            <div class="task-item ${priorityClass} ${completedClass} ${reminderClass} ${overdueClass}" 
-                 data-id="${task.id}" style="${reminderStyle}">
+            <div class="task-item ${priorityClass} ${completedClass} ${reminderClass} ${noteClass} ${overdueClass}" 
+                 data-id="${task.id}">
                 <div class="task-header">
                     <div class="task-title">
-                        <span class="task-emoji">${task.emoji || '📝'}</span>
+                        <span class="task-emoji">${icon}</span>
                         ${task.text}
                         ${isReminder ? ' <i class="fas fa-bell" style="color: #f59e0b;"></i>' : ''}
+                        ${isNote ? ' <i class="fas fa-sticky-note" style="color: #8b5cf6;"></i>' : ''}
                     </div>
                     <div class="task-category">${taskFlow.getCategoryName(task.category)}</div>
                 </div>
                 <div class="task-meta">
-                    ${task.date ? `<div class="task-date"><i class="far fa-calendar"></i> ${taskFlow.formatDate(task.date)}</div>` : ''}
-                    ${task.time ? `<div class="task-time"><i class="far fa-clock"></i> ${task.time}</div>` : ''}
+                    ${task.date && !isNote ? `<div class="task-date"><i class="far fa-calendar"></i> ${taskFlow.formatDate(task.date)}</div>` : ''}
+                    ${displayTime && !isNote ? `<div class="task-time"><i class="far fa-clock"></i> ${displayTime}</div>` : ''}
                     ${isOverdue ? `<div class="task-overdue"><i class="fas fa-exclamation-triangle"></i> Просрочено</div>` : ''}
-                    ${isReminder ? `<div class="task-reminder"><i class="fas fa-bell"></i> Напоминание</div>` : ''}
                 </div>
                 <div class="task-actions">
                     ${isReminder ? '' : `
@@ -321,7 +343,8 @@ class TaskManager {
                 completed: false,
                 deleted: false,
                 archived: false,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                task_type: taskData.task_type || 'task'
             };
             
             // Пытаемся сохранить на сервер
@@ -482,6 +505,25 @@ class TaskManager {
         this.updateAllTaskLists();
         
         return true;
+    }
+    
+    // Сортировка задач
+    sortTasks() {
+        alert('Функция сортировки будет реализована в следующем обновлении');
+    }
+    
+    // Настройка поиска
+    setupSearch() {
+        const searchInput = document.getElementById('tasks-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                // Дебаунс поиска
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    this.updateAllTaskLists();
+                }, 300);
+            });
+        }
     }
 }
 
