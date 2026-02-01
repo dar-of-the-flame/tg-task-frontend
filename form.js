@@ -18,12 +18,11 @@ class FormManager {
             dateInput.min = today.toISOString().split('T')[0];
         }
         
-        // Устанавливаем текущее время + 5 минут
-        const in5min = new Date(today.getTime() + 5 * 60 * 1000);
+        // Устанавливаем текущее время в формате HH:MM
         const timeInput = document.getElementById('task-time');
         if (timeInput) {
-            const hours = in5min.getHours().toString().padStart(2, '0');
-            const minutes = in5min.getMinutes().toString().padStart(2, '0');
+            const hours = today.getHours().toString().padStart(2, '0');
+            const minutes = today.getMinutes().toString().padStart(2, '0');
             timeInput.value = `${hours}:${minutes}`;
         }
         
@@ -89,7 +88,6 @@ class FormManager {
                 const priority = e.currentTarget.dataset.priority;
                 document.getElementById('task-priority').value = priority;
                 
-                // Меняем цвет кнопки
                 document.querySelectorAll('.priority-btn').forEach(b => {
                     b.style.background = '';
                     b.style.color = '';
@@ -111,6 +109,53 @@ class FormManager {
                 btn.click();
             }
         });
+        
+        // Валидация времени (формат HH:MM)
+        const timeInput = document.getElementById('task-time');
+        if (timeInput) {
+            timeInput.addEventListener('input', (e) => {
+                this.validateTimeInput(e.target);
+            });
+            
+            timeInput.addEventListener('blur', (e) => {
+                this.formatTimeInput(e.target);
+            });
+        }
+    }
+    
+    validateTimeInput(input) {
+        let value = input.value.replace(/[^\d:]/g, '');
+        
+        // Автоматически добавляем двоеточие после первых двух цифр
+        if (value.length >= 2 && !value.includes(':')) {
+            value = value.slice(0, 2) + ':' + value.slice(2);
+        }
+        
+        // Ограничиваем длину
+        if (value.length > 5) {
+            value = value.slice(0, 5);
+        }
+        
+        input.value = value;
+    }
+    
+    formatTimeInput(input) {
+        let value = input.value;
+        
+        // Проверяем формат HH:MM
+        const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+        
+        if (timeRegex.test(value)) {
+            // Форматируем с ведущими нулями
+            const parts = value.split(':');
+            const hours = parts[0].padStart(2, '0');
+            const minutes = parts[1].padStart(2, '0');
+            input.value = `${hours}:${minutes}`;
+        } else if (value) {
+            // Показываем предупреждение
+            alert('Введите время в формате ЧЧ:ММ (например, 14:30)');
+            input.focus();
+        }
     }
     
     adjustFormForType(type) {
@@ -119,31 +164,17 @@ class FormManager {
         
         switch(type) {
             case 'note':
-                // Для заметки скрываем дату-время и приоритет
                 if (datetimeGroup) datetimeGroup.style.display = 'none';
                 if (priorityGroup) priorityGroup.style.display = 'none';
                 break;
                 
             case 'reminder':
-                // Для напоминания показываем только дату-время, без приоритета
                 if (datetimeGroup) datetimeGroup.style.display = 'block';
                 if (priorityGroup) priorityGroup.style.display = 'none';
-                
-                // Устанавливаем время на 10 минут вперед
-                const now = new Date();
-                const in10min = new Date(now.getTime() + 10 * 60 * 1000);
-                const hours = in10min.getHours().toString().padStart(2, '0');
-                const minutes = in10min.getMinutes().toString().padStart(2, '0');
-                
-                const timeInput = document.getElementById('task-time');
-                if (timeInput) {
-                    timeInput.value = `${hours}:${minutes}`;
-                }
                 break;
                 
             case 'task':
             default:
-                // Для задачи показываем всё
                 if (datetimeGroup) datetimeGroup.style.display = 'block';
                 if (priorityGroup) priorityGroup.style.display = 'block';
                 break;
@@ -183,6 +214,12 @@ class FormManager {
                 throw new Error('Для напоминания укажите дату и время');
             }
             
+            // Проверяем формат времени
+            const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
+            if (!timeRegex.test(time)) {
+                throw new Error('Введите время в формате ЧЧ:ММ (например, 14:30)');
+            }
+            
             return {
                 text,
                 category: category || 'personal',
@@ -216,7 +253,6 @@ class FormManager {
         
         this.setupFormDefaults();
         
-        // Сбрасываем активные кнопки
         document.querySelectorAll('.category-tag').forEach(tag => {
             if (tag.dataset.category === 'personal') {
                 tag.click();
