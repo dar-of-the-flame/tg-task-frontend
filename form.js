@@ -31,21 +31,6 @@ class FormManager {
     }
     
     setupEventListeners() {
-        // Кнопка "Сейчас"
-        const setNowBtn = document.getElementById('set-now-btn');
-        if (setNowBtn) {
-            setNowBtn.addEventListener('click', () => {
-                const now = new Date();
-                const hours = now.getHours().toString().padStart(2, '0');
-                const minutes = now.getMinutes().toString().padStart(2, '0');
-                
-                const timeInput = document.getElementById('task-time');
-                if (timeInput) {
-                    timeInput.value = `${hours}:${minutes}`;
-                }
-            });
-        }
-        
         // Категории
         document.querySelectorAll('.category-tag').forEach(tag => {
             tag.addEventListener('click', (e) => {
@@ -109,74 +94,38 @@ class FormManager {
                 btn.click();
             }
         });
-        
-        // Валидация времени (формат HH:MM)
-        const timeInput = document.getElementById('task-time');
-        if (timeInput) {
-            timeInput.addEventListener('input', (e) => {
-                this.validateTimeInput(e.target);
-            });
-            
-            timeInput.addEventListener('blur', (e) => {
-                this.formatTimeInput(e.target);
-            });
-        }
-    }
-    
-    validateTimeInput(input) {
-        let value = input.value.replace(/[^\d:]/g, '');
-        
-        // Автоматически добавляем двоеточие после первых двух цифр
-        if (value.length >= 2 && !value.includes(':')) {
-            value = value.slice(0, 2) + ':' + value.slice(2);
-        }
-        
-        // Ограничиваем длину
-        if (value.length > 5) {
-            value = value.slice(0, 5);
-        }
-        
-        input.value = value;
-    }
-    
-    formatTimeInput(input) {
-        let value = input.value;
-        
-        // Проверяем формат HH:MM
-        const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
-        
-        if (timeRegex.test(value)) {
-            // Форматируем с ведущими нулями
-            const parts = value.split(':');
-            const hours = parts[0].padStart(2, '0');
-            const minutes = parts[1].padStart(2, '0');
-            input.value = `${hours}:${minutes}`;
-        } else if (value) {
-            // Показываем предупреждение
-            alert('Введите время в формате ЧЧ:ММ (например, 14:30)');
-            input.focus();
-        }
     }
     
     adjustFormForType(type) {
         const datetimeGroup = document.getElementById('datetime-group');
         const priorityGroup = document.getElementById('priority-group');
+        const dateInput = document.getElementById('task-date');
+        const timeInput = document.getElementById('task-time');
         
         switch(type) {
             case 'note':
+                // Заметка: без даты/времени и приоритета
                 if (datetimeGroup) datetimeGroup.style.display = 'none';
                 if (priorityGroup) priorityGroup.style.display = 'none';
+                if (dateInput) dateInput.required = false;
+                if (timeInput) timeInput.required = false;
                 break;
                 
             case 'reminder':
+                // Напоминание: с датой/временем, без приоритета
                 if (datetimeGroup) datetimeGroup.style.display = 'block';
                 if (priorityGroup) priorityGroup.style.display = 'none';
+                if (dateInput) dateInput.required = true;
+                if (timeInput) timeInput.required = true;
                 break;
                 
             case 'task':
             default:
+                // Задача: с датой/временем и приоритетом
                 if (datetimeGroup) datetimeGroup.style.display = 'block';
                 if (priorityGroup) priorityGroup.style.display = 'block';
+                if (dateInput) dateInput.required = false; // Дата не обязательна для задачи
+                if (timeInput) timeInput.required = false; // Время не обязательно для задачи
                 break;
         }
     }
@@ -212,12 +161,6 @@ class FormManager {
         if (type === 'reminder') {
             if (!date || !time) {
                 throw new Error('Для напоминания укажите дату и время');
-            }
-            
-            // Проверяем формат времени
-            const timeRegex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;
-            if (!timeRegex.test(time)) {
-                throw new Error('Введите время в формате ЧЧ:ММ (например, 14:30)');
             }
             
             return {
